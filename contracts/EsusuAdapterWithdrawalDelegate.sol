@@ -240,8 +240,9 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         
         // uint256 pricePerFullShare = _iDaiLendingService.GetPricePerFullShare();
         
-        uint256 overallGrossDaiBalance = currentBalanceShares.mul(_iDaiLendingService.GetPricePerFullShare()).div(1e18);
-        
+        // uint256 overallGrossDaiBalance = currentBalanceShares.mul(_iDaiLendingService.GetPricePerFullShare()).div(1e18);
+        uint256 overallGrossDaiBalance = currentBalanceShares.mul(_iDaiLendingService.GetPricePerFullShare());
+
         uint256 CycleId = esusuCycleId;
 
         // address memberAddress = member;

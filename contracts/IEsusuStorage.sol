@@ -54,5 +54,4 @@ interface IEsusuStorage {
     function CreateMemberToCycleIndexToCycleIDMapping(address member, uint esusuCycleId) external;
     function UpdateEsusuCycleSharesDuringJoin(uint esusuCycleId, uint memberShares) external;
     function UpdateMemberToXendTokeRewardMapping(address member, uint rewardAmount) external;
-
 }

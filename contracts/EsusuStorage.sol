@@ -345,6 +345,7 @@ contract EsusuStorage {
         esusuCycle.TotalShares = totalShares;
         esusuCycle.CycleStartTime = currentTime;
         esusuCycle.TotalSharesAtStart = totalShares;
+
     }
     
     function UpdateEsusuCycleState(uint256 esusuCycleId,uint256 cycleStateEnum) external onlyOwnerAdapterAndAdapterDelegateContract{
@@ -461,4 +462,21 @@ contract EsusuStorage {
         _;
     }
     
+
+
+
+        /**
+        NOTE: before now, we update the cycle during start but because of ForTube precision issue
+        we now update the cycle once a member joins the cycle. We also invest member's funds immediately they join so 
+        as to increase the exchangeRateStored on ForTube. 
+        This function will not be important on Yearn Finance on the ethereum blockchain
+     */
+    function UpdateEsusuCycleSharesDuringJoin(uint esusuCycleId, uint memberShares) external onlyOwnerAdapterAndAdapterDelegateContract{
+          
+        EsusuCycleMapping[esusuCycleId].TotalShares = EsusuCycleMapping[esusuCycleId].TotalShares.add(memberShares);
+        
+        //  Update cycle in the array
+        EsusuCycle storage esusuCycle = EsusuCycles[esusuCycleId - 1];
+        esusuCycle.TotalShares = EsusuCycleMapping[esusuCycleId].TotalShares;  
+    }
 }

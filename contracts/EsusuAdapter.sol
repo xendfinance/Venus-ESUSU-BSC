@@ -146,23 +146,76 @@ contract EsusuAdapter is OwnableService, ISavingsConfigSchema {
         - Increment the total number of Members that have joined this cycle
     */
     
-    function JoinEsusu(uint256 esusuCycleId, address member) external onlyOwnerAndServiceContract active {
+    // function JoinEsusu(uint256 esusuCycleId, address member) external onlyOwnerAndServiceContract active {
+    //     //  Get Current EsusuCycleId
+    //     uint256 currentEsusuCycleId = _esusuStorage.GetEsusuCycleId();
+        
+    //     //  Check if the cycle ID is valid
+    //     require(
+    //         esusuCycleId > 0 && esusuCycleId <= currentEsusuCycleId,
+    //         "Cycle ID must be within valid EsusuCycleId range"
+    //     );
+
+    //     //  Get the Esusu Cycle struct
+        
+    //     (uint256 CycleId, uint256 DepositAmount, uint256 CycleState,uint256 TotalMembers,uint256 MaxMembers) = _esusuStorage.GetEsusuCycleBasicInformation(esusuCycleId);
+    //     //  If cycle is not in Idle State, bounce 
+    //     require( CycleState == uint(CycleStateEnum.Idle), "Esusu Cycle must be in Idle State before you can join");
+
+        
+    //     //  If cycle is filled up, bounce 
+
+    //     require(TotalMembers < MaxMembers, "Esusu Cycle is filled up, you can't join");
+        
+    //     //  check if member is already in this cycle 
+    //     require(!_isMemberInCycle(member,esusuCycleId), "Member can't join same Esusu Cycle more than once");
+        
+    //     //  If user does not have enough Balance, bounce. For now we use Dai as default
+    //     uint256 memberBalance = _dai.balanceOf(member);
+        
+    //     require(memberBalance >= DepositAmount, "Balance must be greater than or equal to Deposit Amount");
+        
+        
+    //     //  If user balance is greater than or equal to deposit amount then transfer from member to this contract
+    //     //  NOTE: approve this contract to withdraw before transferFrom can work
+    //     _dai.safeTransferFrom(member, address(this), DepositAmount);
+        
+    //     //  Increment the total deposited amount in this cycle
+    //     uint256 totalAmountDeposited = _esusuStorage.IncreaseTotalAmountDepositedInCycle(esusuCycleId,DepositAmount);
+        
+        
+    //     _esusuStorage.CreateMemberAddressToMemberCycleMapping(member,esusuCycleId);
+        
+    //     //  Increase TotalMembers count by 1
+    //     _esusuStorage.IncreaseTotalMembersInCycle(esusuCycleId);
+    //     //  Create the position of the member in the cycle
+    //     _esusuStorage.CreateMemberPositionMapping(CycleId, member);
+    //     //  Create mapping to track the Cycles a member belongs to by index and by ID
+    //     _esusuStorage.CreateMemberToCycleIndexToCycleIDMapping(member, CycleId);
+
+    //     //  emit event
+    //     emit JoinEsusuCycleEvent(
+    //         now,
+    //         member,
+    //         TotalMembers,
+    //         totalAmountDeposited,
+    //         esusuCycleId
+    //     );
+    // }
+
+    function JoinEsusu(uint esusuCycleId, address member) public onlyOwnerAndServiceContract active {
         //  Get Current EsusuCycleId
         uint256 currentEsusuCycleId = _esusuStorage.GetEsusuCycleId();
         
         //  Check if the cycle ID is valid
-        require(
-            esusuCycleId > 0 && esusuCycleId <= currentEsusuCycleId,
-            "Cycle ID must be within valid EsusuCycleId range"
-        );
-
+        require(esusuCycleId > 0 && esusuCycleId <= currentEsusuCycleId, "Cycle ID must be within valid EsusuCycleId range");
+        
         //  Get the Esusu Cycle struct
         
         (uint256 CycleId, uint256 DepositAmount, uint256 CycleState,uint256 TotalMembers,uint256 MaxMembers) = _esusuStorage.GetEsusuCycleBasicInformation(esusuCycleId);
         //  If cycle is not in Idle State, bounce 
         require( CycleState == uint(CycleStateEnum.Idle), "Esusu Cycle must be in Idle State before you can join");
 
-        
         //  If cycle is filled up, bounce 
 
         require(TotalMembers < MaxMembers, "Esusu Cycle is filled up, you can't join");
@@ -181,11 +234,14 @@ contract EsusuAdapter is OwnableService, ISavingsConfigSchema {
         _dai.safeTransferFrom(member, address(this), DepositAmount);
         
         //  Increment the total deposited amount in this cycle
-        uint256 totalAmountDeposited = _esusuStorage.IncreaseTotalAmountDepositedInCycle(esusuCycleId,DepositAmount);
+        uint256 totalAmountDeposited = _esusuStorage.IncreaseTotalAmountDepositedInCycle(CycleId,DepositAmount);
         
         
-        _esusuStorage.CreateMemberAddressToMemberCycleMapping(member,esusuCycleId);
-        
+       _esusuStorage.CreateMemberAddressToMemberCycleMapping(
+            member,
+            esusuCycleId
+        );
+
         //  Increase TotalMembers count by 1
         _esusuStorage.IncreaseTotalMembersInCycle(esusuCycleId);
         //  Create the position of the member in the cycle
@@ -193,14 +249,37 @@ contract EsusuAdapter is OwnableService, ISavingsConfigSchema {
         //  Create mapping to track the Cycles a member belongs to by index and by ID
         _esusuStorage.CreateMemberToCycleIndexToCycleIDMapping(member, CycleId);
 
-        //  emit event
-        emit JoinEsusuCycleEvent(
-            now,
-            member,
-            TotalMembers,
-            totalAmountDeposited,
-            esusuCycleId
-        );
+        //  Get  the BUSD deposited for this cycle by this user: DepositAmount
+        
+        //  Get the balance of fBUSDSharesForContract before save operation for this user
+        uint fBUSDSharesForContractBeforeSave = _yDai.balanceOf(address(this));
+        
+        //  Invest the dai in Yearn Finance using Dai Lending Service.
+        
+        //  NOTE: yDai will be sent to this contract
+        //  Transfer dai from this contract to dai lending adapter and then call a new save function that will not use transferFrom internally
+        //  Approve the daiLendingAdapter so it can spend our Dai on our behalf 
+        address daiLendingAdapterContractAddress = _iDaiLendingService.GetVenusLendingAdapterAddress();
+        _dai.approve(daiLendingAdapterContractAddress,DepositAmount);
+        
+        _iDaiLendingService.Save(DepositAmount);
+        
+        //  Get the balance of fBUSDSharesForContract after save operation
+        uint fBUSDSharesForContractAfterSave = _yDai.balanceOf(address(this));
+        
+        
+        //  Save fBUSD Total balanceShares for this member
+        uint sharesForMember = fBUSDSharesForContractAfterSave.sub(fBUSDSharesForContractBeforeSave);
+        
+        //  Increase TotalDeposits made to this contract 
+
+        _esusuStorage.IncreaseTotalDeposits(DepositAmount);
+
+        //  Update Esusu Cycle State, total cycle duration, total shares  and  cycle start time, 
+        _esusuStorage.UpdateEsusuCycleSharesDuringJoin(CycleId, sharesForMember);
+
+        //  emit event 
+        emit JoinEsusuCycleEvent(now, member,TotalMembers, totalAmountDeposited,CycleId);
     }
 
     /*
@@ -215,7 +294,82 @@ contract EsusuAdapter is OwnableService, ISavingsConfigSchema {
             - Change in yDaiSharesForContract = yDai.balanceOf(address(this) after save operation - yDai.balanceOf(address(this) after before operation
     */
     
-    function StartEsusuCycle(uint256 esusuCycleId) external onlyOwnerAndServiceContract active{
+    // function StartEsusuCycle(uint256 esusuCycleId) external onlyOwnerAndServiceContract active{
+        
+    //     //  Get Current EsusuCycleId
+    //     uint256 currentEsusuCycleId = _esusuStorage.GetEsusuCycleId();
+        
+    //     //  Get Esusu Cycle Basic information
+    //     (uint256 CycleId, uint256 DepositAmount, uint256 CycleState,uint256 TotalMembers,uint256 MaxMembers) = _esusuStorage.GetEsusuCycleBasicInformation(esusuCycleId);
+
+    //     //  Get Esusu Cycle Total Shares
+    //     (uint256 EsusuCycleTotalShares) = _esusuStorage.GetEsusuCycleTotalShares(esusuCycleId);
+        
+        
+    //     //  Get Esusu Cycle Payout Interval 
+    //     (uint256 EsusuCyclePayoutInterval) = _esusuStorage.GetEsusuCyclePayoutInterval(esusuCycleId);
+        
+        
+    //     //  If cycle ID is valid, else bonunce
+    //     require(esusuCycleId != 0 && esusuCycleId <= currentEsusuCycleId, "Cycle ID must be within valid EsusuCycleId range");
+        
+
+    //     require(
+    //         now > _esusuStorage.GetEsusuCycleStartTime(esusuCycleId),
+    //         "Cycle can only be started when start time has elapsed"
+    //     );
+
+    //     //  Calculate Cycle LifeTime in seconds
+    //     uint256 toalCycleDuration = EsusuCyclePayoutInterval * TotalMembers;
+
+    //     //  Get all the dai deposited for this cycle
+    //     uint256 esusuCycleBalance = _esusuStorage.GetEsusuCycleTotalAmountDeposited(esusuCycleId);
+        
+    //     //  Get the balance of yDaiSharesForContract before save opration
+    //     uint256 yDaiSharesForContractBeforeSave = _yDai.balanceOf(address(this));
+        
+    //     //  Invest the dai in Yearn Finance using Dai Lending Service.
+
+    //     //  NOTE: yDai will be sent to this contract
+    //     //  Transfer dai from this contract to dai lending adapter and then call a new save function that will not use transferFrom internally
+    //     //  Approve the daiLendingAdapter so it can spend our Dai on our behalf
+    //     address daiLendingAdapterContractAddress = _iDaiLendingService
+    //         .GetVenusLendingAdapterAddress();
+    //     _dai.approve(daiLendingAdapterContractAddress, esusuCycleBalance);
+
+    //     _iDaiLendingService.Save(esusuCycleBalance);
+
+    //     //  Get the balance of yDaiSharesForContract after save operation
+    //     uint256 yDaiSharesForContractAfterSave = _yDai.balanceOf(address(this));
+        
+        
+    //     //  Save yDai Total balanceShares
+    //     uint256 totalShares = yDaiSharesForContractAfterSave.sub(yDaiSharesForContractBeforeSave).add(EsusuCycleTotalShares);
+        
+    //     //  Increase TotalDeposits made to this contract 
+
+    //     _esusuStorage.IncreaseTotalDeposits(esusuCycleBalance);
+
+    //     //  Update Esusu Cycle State, total cycle duration, total shares  and  cycle start time,
+    //     _esusuStorage.UpdateEsusuCycleDuringStart(
+    //         CycleId,
+    //         uint256(CycleStateEnum.Active),
+    //         toalCycleDuration,
+    //         totalShares,
+    //         now
+    //     );
+
+    //     //  emit event
+    //     emit StartEsusuCycleEvent(
+    //         now,
+    //         esusuCycleBalance,
+    //         toalCycleDuration,
+    //         totalShares,
+    //         esusuCycleId
+    //     );
+    // }
+    
+    function StartEsusuCycle(uint esusuCycleId) public onlyOwnerAndServiceContract active{
         
         //  Get Current EsusuCycleId
         uint256 currentEsusuCycleId = _esusuStorage.GetEsusuCycleId();
@@ -234,63 +388,25 @@ contract EsusuAdapter is OwnableService, ISavingsConfigSchema {
         //  If cycle ID is valid, else bonunce
         require(esusuCycleId != 0 && esusuCycleId <= currentEsusuCycleId, "Cycle ID must be within valid EsusuCycleId range");
         
+        require(now > _esusuStorage.GetEsusuCycleStartTime(esusuCycleId),"Cycle can only be started when start time has elapsed");
 
-        require(
-            now > _esusuStorage.GetEsusuCycleStartTime(esusuCycleId),
-            "Cycle can only be started when start time has elapsed"
-        );
+        require(CycleState == uint(CycleStateEnum.Idle), "Cycle can only be started when in Idle state");
+           
+        require(TotalMembers >= 2, "Cycle can only be started with 2 or more members" );
 
         //  Calculate Cycle LifeTime in seconds
         uint256 toalCycleDuration = EsusuCyclePayoutInterval * TotalMembers;
 
         //  Get all the dai deposited for this cycle
         uint256 esusuCycleBalance = _esusuStorage.GetEsusuCycleTotalAmountDeposited(esusuCycleId);
+                
+        //  Update Esusu Cycle State, total cycle duration, total shares  and  cycle start time, 
+        _esusuStorage.UpdateEsusuCycleDuringStart(CycleId,uint(CycleStateEnum.Active),toalCycleDuration,EsusuCycleTotalShares,now);
         
-        //  Get the balance of yDaiSharesForContract before save opration
-        uint256 yDaiSharesForContractBeforeSave = _yDai.balanceOf(address(this));
-        
-        //  Invest the dai in Yearn Finance using Dai Lending Service.
-
-        //  NOTE: yDai will be sent to this contract
-        //  Transfer dai from this contract to dai lending adapter and then call a new save function that will not use transferFrom internally
-        //  Approve the daiLendingAdapter so it can spend our Dai on our behalf
-        address daiLendingAdapterContractAddress = _iDaiLendingService
-            .GetVenusLendingAdapterAddress();
-        _dai.approve(daiLendingAdapterContractAddress, esusuCycleBalance);
-
-        _iDaiLendingService.Save(esusuCycleBalance);
-
-        //  Get the balance of yDaiSharesForContract after save operation
-        uint256 yDaiSharesForContractAfterSave = _yDai.balanceOf(address(this));
-        
-        
-        //  Save yDai Total balanceShares
-        uint256 totalShares = yDaiSharesForContractAfterSave.sub(yDaiSharesForContractBeforeSave).add(EsusuCycleTotalShares);
-        
-        //  Increase TotalDeposits made to this contract 
-
-        _esusuStorage.IncreaseTotalDeposits(esusuCycleBalance);
-
-        //  Update Esusu Cycle State, total cycle duration, total shares  and  cycle start time,
-        _esusuStorage.UpdateEsusuCycleDuringStart(
-            CycleId,
-            uint256(CycleStateEnum.Active),
-            toalCycleDuration,
-            totalShares,
-            now
-        );
-
-        //  emit event
-        emit StartEsusuCycleEvent(
-            now,
-            esusuCycleBalance,
-            toalCycleDuration,
-            totalShares,
-            esusuCycleId
-        );
+        //  emit event 
+        emit StartEsusuCycleEvent(now,esusuCycleBalance, toalCycleDuration,
+                                    EsusuCycleTotalShares,esusuCycleId);
     }
-    
-    
   
     function GetMemberCycleInfo(address memberAddress, uint256 esusuCycleId) active external view returns(uint256 CycleId, address MemberId, uint256 TotalAmountDepositedInCycle, uint256 TotalPayoutReceivedInCycle, uint256 memberPosition) {
         
