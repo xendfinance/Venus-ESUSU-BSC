@@ -351,8 +351,6 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
 
         address cycleOwner = _esusuStorage.GetCycleOwner(esusuCycleId);
         
-        
-
         _dai.safeTransfer(cycleOwner, creatorReward);
 
 

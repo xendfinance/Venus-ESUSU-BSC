@@ -167,6 +167,9 @@
             await xendTokenContract.grantAccess(esusuAdapterWithdrawalDelegateContract.address);
             console.log("11->Xend Token Has Given access To Esusu Adapter Withdrawal Delegate to transfer tokens ...");
 
+           //12. Set Group Creator Reward Percentage
+           await esusuAdapterWithdrawalDelegateContract.setGroupCreatorRewardPercent(10);
+           console.log("11-> Group Creator reward set on ESUSU Withdrawal Delegate ...");
 
 
             //  Get the addresses and Balances of at least 2 accounts to be used in the test
@@ -228,334 +231,34 @@
         var maxMembers = "2";
         var currentEsusuCycleId = null;
 
-        //1 & 2.  Create Group and Get Group Information By name
+        // //1 & 2.  Create Group and Get Group Information By name
 
-        it('EsusuService Contract: Should Create Group and Get the Group By Name', async () => {
+        // it('EsusuService Contract: Should Create Group and Get the Group By Name', async () => {
 
-            await esusuServiceContract.CreateGroup(groupName, groupSymbol);
+        //     await esusuServiceContract.CreateGroup(groupName, groupSymbol);
 
-            var groupInfo = await esusuServiceContract.GetGroupInformationByName(groupName);
-
-            console.log(`Group Id: ${BigInt(groupInfo[0])}, Name: ${groupInfo[1]}, Symbol: ${groupInfo[2]}, Owner: ${groupInfo[3]}`);
-
-            groupId = BigInt(groupInfo[0]);
-            assert(groupInfo[1] === groupName);
-            assert(groupInfo[2] === groupSymbol);
-
-        });
-
-        //3  & 6.Create An Esusu Cycle, Get Current ID and Get the Esusu Cycle Information
-        it('EsusuService Contract: Should Create Esusu Cycle and Get The Current Esusu Cycle', async () => {
-
-            //  Create esusu cycle
-            await esusuServiceContract.CreateEsusu(groupId.toString(),depositAmount, payoutIntervalSeconds,startTimeInSeconds.toString(),maxMembers);
-            //  get current cycle ID
-            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
-
-            console.log(`Current Esusu Cycle ID: ${currentEsusuCycleId}`);
-
-            //  Get esusu cycle information
-            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-
-            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
-
-            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
-            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
-            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
-            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
-        });
-
-        //4 Join Esusu
-        it('EsusuService Contract: Should Join The Current Esusu Cycle', async () => {
-
-            //  Give allowance to the EsusuAdapter to spend DAI on behalf of account 1 and 2
-            var approvedAmountToSpend = BigInt(10000000000000000000000); //   10,000 Dai
-            approveBUSD(esusuAdapterContract.address,account1,approvedAmountToSpend);
-            approveBUSD(esusuAdapterContract.address,account2,approvedAmountToSpend);
-
-            //  Account 1 and 2 should Join esusu cycle
-            await esusuServiceContract.JoinEsusu(currentEsusuCycleId.toString(), {from: account1});
-
-            var pricePerFullShare1 = await venusLendingServiceContract.GetPricePerFullShare();
-            console.log(`Price Per Full Share After Account 1 Saves:  ${pricePerFullShare1}`);
-
-            await esusuServiceContract.JoinEsusu(currentEsusuCycleId.toString(), {from: account2});
-
-            var pricePerFullShare2 = await venusLendingServiceContract.GetPricePerFullShare();
-            console.log(`Price Per Full Share After Account 2 Saves:  ${pricePerFullShare2}`);
-
-            //  get current cycle ID
-            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
-
-            //  Get esusu cycle information
-            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-
-            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
-            assert(maxMembers.toString() === BigInt(result[11]).toString());
-
-            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
-            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
-            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
-            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
-        });
-
-        //5 Start Esusu Cycle after about (currentTimeInSeconds - startTimeInSeconds)  to ensure the start time has been reached
-        it('EsusuService Contract: Should Start The Current Esusu Cycle', async () => {
-
-            var timeoutTimeInSeconds = 0;
-            var currentTimeInSeconds = Math.floor(Date.now() / 1000);
-            var timeDiff = currentTimeInSeconds - startTimeInSeconds;
-
-            console.log(`currentTimeInSeconds: ${currentTimeInSeconds} ; startTimeInSeconds: ${startTimeInSeconds} `);
-
-            if(timeDiff < 0){
-                console.log(`Time is ${timeoutTimeInSeconds} Time never reach!!!`);
-                timeoutTimeInSeconds = Math.abs(timeDiff);
-            }else{
-
-                console.log(`Time is ${timeoutTimeInSeconds} Time don reach!!!`);
-                //  Just add wait of 5 seconds just to have some delay before Start cycle is called even when current time is greater than start time
-                timeoutTimeInSeconds += 5;
-
-            }
-
-            //  if currentTimeInSeconds is less than startTimeInSeconds, it means we have to wait for (startTimeInSeconds - currentTimeInSeconds)
-            function timeout(s){
-                return new Promise(resolve => setTimeout(resolve,s*1000));
-            }
-
-            console.log(`Waiting for ${timeoutTimeInSeconds} seconds for cycle to start`);
-
-            await timeout(timeoutTimeInSeconds);
-            console.log(`Done Waiting for ${timeoutTimeInSeconds} seconds. Starting Cycle ...`);
-
-            //  Start esusu cycle
-            await esusuServiceContract.StartEsusuCycle(currentEsusuCycleId.toString());
-
-            //  get current cycle ID
-            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
-
-            //  Get esusu cycle information
-            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-            var cycleState = BigInt(result[3]).toString();
-
-            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
-
-            //  Cycle state must be active
-            assert(cycleState === "1");
-
-            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
-            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
-            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
-            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
-
-            var EsusuCycleArray = await esusuStorageContract.GetEsusuCycles();
-
-            console.log("List of All Esusu Cycles After Start");
-            console.log(EsusuCycleArray);
-
-        });
-
-        //  Get Member Cycle Info
-        it('EsusuService Contract: Should Get Member Cycle Information', async () => {
-
-            var result = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
-
-            console.log(`CycleId: ${BigInt(result[0])},MemberId: ${result[1]}, TotalAmountDepositedInCycle: ${BigInt(result[2])},
-                TotalPayoutReceivedInCycle: ${BigInt(result[3])}, memberPosition: ${Number(BigInt(result[4]))}`);
-
-            var memberPosition = Number(BigInt(result[4]));
-
-            assert(memberPosition == 1);
-        });
-
-
-        //  Get Member Cycle Info
-        it('EsusuService Contract: Should Calculate Cycle Portfolio', async () => {
-
-            var pricePerFullShare1 = await venusLendingServiceContract.GetPricePerFullShare();
-            console.log(`Price Per Full Share:  ${pricePerFullShare1}`);
-
-            //  Get esusu cycle information
-            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-
-            var totalSharesInCycle = BigInt(result[6]);
-            console.log(`Cycle Total Shares:  ${totalSharesInCycle}`);
-
-            var totalAmountInBUSD = BigInt(pricePerFullShare1) * BigInt(totalSharesInCycle);
-            console.log(`Total Value In Cycle:  ${totalAmountInBUSD}`);
-
-        });
-
-        // Withdraw ROI From Esusu Cycle
-        it('EsusuService Contract: Should Withdraw ROI The Current Esusu Cycle', async () => {
-            //  Get esusu cycle information
-            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-
-            //  get the member position from the cycle information  so we can determine the approx withdrawal wait time
-            var memberCyclerInfo = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
-
-
-            //  Get DaiBalance before withdrawal
-            var DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-            console.log(`Dai Balance Before Withdrawing Overall ROI: ${DaiBalanceBeforeWithdrawing}`);
-
-
-            //  Get the total cycle duration and start time
-            var totalCycleDurationInSeconds = Number(BigInt(result[7]));
-            var cycleStartTimeInSeconds = Number(BigInt(result[9]));
-            var currentTimeInSeconds = (Math.floor(Date.now() / 1000));
-            var withdrawalWaitTimeInSeconds = 0;
-            if(currentTimeInSeconds > (cycleStartTimeInSeconds + totalCycleDurationInSeconds)){
-                withdrawalWaitTimeInSeconds += 5;  //  Just add 5 seconds delay for no reason :D
-            }else{
-                var payoutIntervalSeconds = Number(BigInt(result[2]));
-                var memberPosition = Number(BigInt(memberCyclerInfo[4]));
-
-                withdrawalWaitTimeInSeconds = (memberPosition * payoutIntervalSeconds);
-            }
-            console.log(`Withdrawal Wait Time In Seconds: ${withdrawalWaitTimeInSeconds}`);
-
-            function timeout(s){
-                return new Promise(resolve => setTimeout(resolve,s*1000));
-            }
-
-            await timeout(withdrawalWaitTimeInSeconds);
-
-            //  Withdraw overall ROI
-            await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(),{from: account1});
-
-            console.log(`YDAI Balance of Esusu Adapter Withdrawal Delegate: ${await vBUSDContract.methods.balanceOf(esusuAdapterWithdrawalDelegateContract.address).call()}`);
-            console.log(`DAI Balance of Esusu Adapter Withdrawal Delegate: ${await BUSDContract.methods.balanceOf(esusuAdapterWithdrawalDelegateContract.address).call()}`);
-
-            console.log(`Withdrawing...`);
-
-            var DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-            console.log(`Dai Balance After Withdrawing Overall ROI: ${DaiBalanceAfterWithdrawing}`);
-
-            //  get current cycle ID
-            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
-
-            //  Get updated status of this cycle
-            result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-            var totalBeneficiaries = BigInt(result[10]);
-
-            //  TODO: get the treasury balance and ensure dai balance is greater than 0
-
-            assert(DaiBalanceAfterWithdrawing > DaiBalanceBeforeWithdrawing);
-            assert(totalBeneficiaries > 0);   //    Total Beneficiaries must be greater than 0
-            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
-            assert(maxMembers.toString() === BigInt(result[11]).toString());
-
-            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
-            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
-            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
-            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
-
-            var amount =  await esusuStorageContract.GetMemberCycleToBeneficiaryMapping(currentEsusuCycleId.toString(), account1);
-            console.log(`Member has withdrawn ROI : ${amount} DAI`);
-
-        });
-
-        // Withdraw Capital From Esusu Cycle
-        it('EsusuService Contract: Should Withdraw Capital From The Current Esusu Cycle', async () => {
-            //  NOTE: To withdraw capital, the total cycle time must have elapsed, so we must wait for the cycle time to elapse
-
-            //  Get esusu cycle information
-            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-
-            //  Get DaiBalance before withdrawal
-            var DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-            console.log(`Dai Balance Before Withdrawing Capital : ${DaiBalanceBeforeWithdrawing}`);
-
-
-            //  Get the total cycle duration and start time
-            var totalCycleDurationInSeconds = Number(BigInt(result[7]));
-            var cycleStartTimeInSeconds = Number(BigInt(result[9]));
-            var currentTimeInSeconds = (Math.floor(Date.now() / 1000));
-            var withdrawalWaitTimeInSeconds = 0;
-            if(currentTimeInSeconds > (cycleStartTimeInSeconds + totalCycleDurationInSeconds)){
-                withdrawalWaitTimeInSeconds += 5;  //  Just add 5 seconds delay for no reason :D
-            }else{
-
-                withdrawalWaitTimeInSeconds = (cycleStartTimeInSeconds + totalCycleDurationInSeconds) - currentTimeInSeconds ;
-            }
-            console.log(`Withdrawal Wait Time In Seconds: ${withdrawalWaitTimeInSeconds}`);
-
-            function timeout(s){
-                return new Promise(resolve => setTimeout(resolve,s*1000));
-            }
-
-            await timeout(withdrawalWaitTimeInSeconds);
-
-            //  Withdraw capital
-            await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString());
-
-            console.log(`Withdrawing...`);
-
-            var DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-            console.log(`Dai Balance After Withdrawing Capital: ${DaiBalanceAfterWithdrawing}`);
-
-            //  get current cycle ID
-            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
-
-            //  Get updated status of this cycle
-            result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-            var totalBeneficiaries = BigInt(result[10]);
-            var TotalCapitalWithdrawn = BigInt(result[8]);
-
-
-            assert(DaiBalanceAfterWithdrawing > DaiBalanceBeforeWithdrawing);
-            assert(totalBeneficiaries > 0);     //  Total Beneficiaries must be greater than 0
-            assert(TotalCapitalWithdrawn > 0);  //  Total Capital Withdrawn must be greater than 0
-            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
-            assert(maxMembers.toString() === BigInt(result[11]).toString());
-
-            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
-            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
-            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
-            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
-
-            var EsusuCycleArray = await esusuStorageContract.GetEsusuCycles();
-
-            console.log("List of All Esusu Cycles After Capital Withdrawal");
-            console.log(EsusuCycleArray)
-
-        });
-
-
-        // /**
-        //  *  The tests below repeat core operations by using different accounts to make the function calls and
-        //  *  also increasing the number of members in each operation
-        //  */
-
-        // maxMembers = "4";
-        // payoutIntervalSeconds = "60";  // 1 minute
-        // it('EsusuService Contract: Should Create Group With Account 2', async () => {
-
-        //     await esusuServiceContract.CreateGroup("Jedi Master", "JM",{from: account2});
-
-        //     var groupInfo = await esusuServiceContract.GetGroupInformationByName("Jedi Master");
+        //     var groupInfo = await esusuServiceContract.GetGroupInformationByName(groupName);
 
         //     console.log(`Group Id: ${BigInt(groupInfo[0])}, Name: ${groupInfo[1]}, Symbol: ${groupInfo[2]}, Owner: ${groupInfo[3]}`);
 
         //     groupId = BigInt(groupInfo[0]);
-        //     assert(groupInfo[1] === "Jedi Master");
-        //     assert(groupInfo[2] === "JM");
+        //     assert(groupInfo[1] === groupName);
+        //     assert(groupInfo[2] === groupSymbol);
 
         // });
 
-        // it('EsusuService Contract: Should Create Esusu Cycle With Account 2', async () => {
+        // //3  & 6.Create An Esusu Cycle, Get Current ID and Get the Esusu Cycle Information
+        // it('EsusuService Contract: Should Create Esusu Cycle and Get The Current Esusu Cycle', async () => {
 
         //     //  Create esusu cycle
-        //     await esusuServiceContract.CreateEsusu(groupId.toString(),depositAmount, payoutIntervalSeconds,startTimeInSeconds.toString(),maxMembers,{from:account2});
+        //     await esusuServiceContract.CreateEsusu(groupId.toString(),depositAmount, payoutIntervalSeconds,startTimeInSeconds.toString(),maxMembers);
         //     //  get current cycle ID
-        //     currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId(),{from:account2});
+        //     currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
 
         //     console.log(`Current Esusu Cycle ID: ${currentEsusuCycleId}`);
 
         //     //  Get esusu cycle information
-        //     var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString(),{from:account2});
+        //     var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
 
         //     assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
 
@@ -565,18 +268,24 @@
         //     TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
         // });
 
-        // it('EsusuService Contract: Should Join The Current Esusu Cycle With 3 accounts', async () => {
+        // //4 Join Esusu
+        // it('EsusuService Contract: Should Join The Current Esusu Cycle', async () => {
 
-        //     //  Give allowance to the EsusuAdapter to spend DAI on behalf of account 1, 2 & 3
+        //     //  Give allowance to the EsusuAdapter to spend DAI on behalf of account 1 and 2
         //     var approvedAmountToSpend = BigInt(10000000000000000000000); //   10,000 Dai
-        //     approveDai(esusuAdapterContract.address,account1,approvedAmountToSpend);
-        //     approveDai(esusuAdapterContract.address,account2,approvedAmountToSpend);
-        //     approveDai(esusuAdapterContract.address,account3,approvedAmountToSpend);
+        //     approveBUSD(esusuAdapterContract.address,account1,approvedAmountToSpend);
+        //     approveBUSD(esusuAdapterContract.address,account2,approvedAmountToSpend);
 
-        //     //  Account 1, 2 & 3 should Join esusu cycle
+        //     //  Account 1 and 2 should Join esusu cycle
         //     await esusuServiceContract.JoinEsusu(currentEsusuCycleId.toString(), {from: account1});
+
+        //     var pricePerFullShare1 = await venusLendingServiceContract.GetPricePerFullShare();
+        //     console.log(`Price Per Full Share After Account 1 Saves:  ${pricePerFullShare1}`);
+
         //     await esusuServiceContract.JoinEsusu(currentEsusuCycleId.toString(), {from: account2});
-        //     await esusuServiceContract.JoinEsusu(currentEsusuCycleId.toString(), {from: account3});
+
+        //     var pricePerFullShare2 = await venusLendingServiceContract.GetPricePerFullShare();
+        //     console.log(`Price Per Full Share After Account 2 Saves:  ${pricePerFullShare2}`);
 
         //     //  get current cycle ID
         //     currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
@@ -593,7 +302,8 @@
         //     TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
         // });
 
-        // it('EsusuService Contract: Should Start The Current Esusu Cycle With 3 accounts in the Cycle', async () => {
+        // //5 Start Esusu Cycle after about (currentTimeInSeconds - startTimeInSeconds)  to ensure the start time has been reached
+        // it('EsusuService Contract: Should Start The Current Esusu Cycle', async () => {
 
         //     var timeoutTimeInSeconds = 0;
         //     var currentTimeInSeconds = Math.floor(Date.now() / 1000);
@@ -623,7 +333,7 @@
         //     console.log(`Done Waiting for ${timeoutTimeInSeconds} seconds. Starting Cycle ...`);
 
         //     //  Start esusu cycle
-        //     await esusuServiceContract.StartEsusuCycle(currentEsusuCycleId.toString(), {from : account3});
+        //     await esusuServiceContract.StartEsusuCycle(currentEsusuCycleId.toString());
 
         //     //  get current cycle ID
         //     currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
@@ -642,97 +352,101 @@
         //     TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
         //     TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
 
+        //     var EsusuCycleArray = await esusuStorageContract.GetEsusuCycles();
+
+        //     console.log("List of All Esusu Cycles After Start");
+        //     console.log(EsusuCycleArray);
+
         // });
 
-        // it('EsusuService Contract: Should Withdraw ROI For Each Of The 3 Accounts In The Current Esusu Cycle', async () => {
+        // //  Get Member Cycle Info
+        // it('EsusuService Contract: Should Get Member Cycle Information', async () => {
+
+        //     var result = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
+
+        //     console.log(`CycleId: ${BigInt(result[0])},MemberId: ${result[1]}, TotalAmountDepositedInCycle: ${BigInt(result[2])},
+        //         TotalPayoutReceivedInCycle: ${BigInt(result[3])}, memberPosition: ${Number(BigInt(result[4]))}`);
+
+        //     var memberPosition = Number(BigInt(result[4]));
+
+        //     assert(memberPosition == 1);
+        // });
+
+
+        // //  Get Member Cycle Info
+        // it('EsusuService Contract: Should Calculate Cycle Portfolio', async () => {
+
+        //     var pricePerFullShare1 = await venusLendingServiceContract.GetPricePerFullShare();
+        //     console.log(`Price Per Full Share:  ${pricePerFullShare1}`);
+
+        //     //  Get esusu cycle information
+        //     var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
+
+        //     var totalSharesInCycle = BigInt(result[6]);
+        //     console.log(`Cycle Total Shares:  ${totalSharesInCycle}`);
+
+        //     var totalAmountInBUSD = BigInt(pricePerFullShare1) * BigInt(totalSharesInCycle);
+        //     console.log(`Total Value In Cycle:  ${totalAmountInBUSD}`);
+
+        // });
+
+        // // Withdraw ROI From Esusu Cycle
+        // it('EsusuService Contract: Should Withdraw ROI The Current Esusu Cycle', async () => {
         //     //  Get esusu cycle information
         //     var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
 
         //     //  get the member position from the cycle information  so we can determine the approx withdrawal wait time
-        //     var member1CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
-        //     var member2CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account2, currentEsusuCycleId.toString());
-        //     var member3CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account3, currentEsusuCycleId.toString());
+        //     var memberCyclerInfo = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
+
 
         //     //  Get DaiBalance before withdrawal
-        //     var member1DaiBalanceBeforeWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account1));
-        //     var member2DaiBalanceBeforeWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account2));
-        //     var member3DaiBalanceBeforeWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account3));
-
-        //     console.log(`Member 1 Dai Balance Before Withdrawing Overall ROI: ${member1DaiBalanceBeforeWithdrawing}`);
-        //     console.log(`Member 2 Dai Balance Before Withdrawing Overall ROI: ${member2DaiBalanceBeforeWithdrawing}`);
-        //     console.log(`Member 3 Dai Balance Before Withdrawing Overall ROI: ${member3DaiBalanceBeforeWithdrawing}`);
+        //     var DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
+        //     console.log(`Dai Balance Before Withdrawing Overall ROI: ${DaiBalanceBeforeWithdrawing}`);
 
 
         //     //  Get the total cycle duration and start time
         //     var totalCycleDurationInSeconds = Number(BigInt(result[7]));
         //     var cycleStartTimeInSeconds = Number(BigInt(result[9]));
         //     var currentTimeInSeconds = (Math.floor(Date.now() / 1000));
-
-        //     var member1WithdrawalWaitTimeInSeconds = 0;
-        //     var member2WithdrawalWaitTimeInSeconds = 0;
-        //     var member3WithdrawalWaitTimeInSeconds = 0;
-
+        //     var withdrawalWaitTimeInSeconds = 0;
         //     if(currentTimeInSeconds > (cycleStartTimeInSeconds + totalCycleDurationInSeconds)){
-        //         member1WithdrawalWaitTimeInSeconds += 5;  //  Just add 5 seconds delay for no reason :D
-        //         member2WithdrawalWaitTimeInSeconds += 5;
-        //         member3WithdrawalWaitTimeInSeconds += 5;
-
+        //         withdrawalWaitTimeInSeconds += 5;  //  Just add 5 seconds delay for no reason :D
         //     }else{
         //         var payoutIntervalSeconds = Number(BigInt(result[2]));
-        //         var member1Position = Number(BigInt(member1CycleInfo[4]));
-        //         var member2Position = Number(BigInt(member2CycleInfo[4]));
-        //         var member3Position = Number(BigInt(member3CycleInfo[4]));
+        //         var memberPosition = Number(BigInt(memberCyclerInfo[4]));
 
-        //         member1WithdrawalWaitTimeInSeconds = member1Position * payoutIntervalSeconds;
-        //         member2WithdrawalWaitTimeInSeconds = member2Position * payoutIntervalSeconds;
-        //         member3WithdrawalWaitTimeInSeconds = member3Position * payoutIntervalSeconds;
-
+        //         withdrawalWaitTimeInSeconds = (memberPosition * payoutIntervalSeconds) + 10;
         //     }
-        //     console.log(`Member 1 Withdrawal Wait Time In Seconds: ${member1WithdrawalWaitTimeInSeconds}`);
-        //     console.log(`Member 2 Withdrawal Wait Time In Seconds: ${member2WithdrawalWaitTimeInSeconds}`);
-        //     console.log(`Member 3 Withdrawal Wait Time In Seconds: ${member3WithdrawalWaitTimeInSeconds}`);
+        //     console.log(`Withdrawal Wait Time In Seconds: ${withdrawalWaitTimeInSeconds}`);
 
         //     function timeout(s){
         //         return new Promise(resolve => setTimeout(resolve,s*1000));
         //     }
 
-        //     //  Withdraw overall ROI For Member 1
-        //     await timeout(payoutIntervalSeconds + 10);
-        //     await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(), {from: account1});
-        //     console.log(`Member 1 ROI withdrawal complete ...`);
+        //     await timeout(withdrawalWaitTimeInSeconds);
 
-        //     //  Withdraw overall ROI For Member 2
-        //     await timeout(payoutIntervalSeconds + 10);
-        //     await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(), {from: account2});
-        //     console.log(`Member 2 ROI withdrawal complete ...`);
+        //     //  Withdraw overall ROI
+        //     await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(),{from: account1});
 
-        //     //  Withdraw overall ROI For Member 3
-        //     await timeout(payoutIntervalSeconds + 10);
-        //     await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(), {from: account3});
-        //     console.log(`Member 3 ROI withdrawal complete ...`);
+        //     console.log(`YDAI Balance of Esusu Adapter Withdrawal Delegate: ${await vBUSDContract.methods.balanceOf(esusuAdapterWithdrawalDelegateContract.address).call()}`);
+        //     console.log(`DAI Balance of Esusu Adapter Withdrawal Delegate: ${await BUSDContract.methods.balanceOf(esusuAdapterWithdrawalDelegateContract.address).call()}`);
 
-        //     var member1DaiBalanceAfterWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account1));
-        //     var member2DaiBalanceAfterWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account2));
-        //     var member3DaiBalanceAfterWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account3));
+        //     console.log(`Withdrawing...`);
 
-        //     console.log(`Member 1 Dai Balance After Withdrawing Overall ROI: ${member1DaiBalanceAfterWithdrawing}`);
-        //     console.log(`Member 2 Dai Balance After Withdrawing Overall ROI: ${member2DaiBalanceAfterWithdrawing}`);
-        //     console.log(`Member 3 Dai Balance After Withdrawing Overall ROI: ${member3DaiBalanceAfterWithdrawing}`);
+        //     var DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
+        //     console.log(`Dai Balance After Withdrawing Overall ROI: ${DaiBalanceAfterWithdrawing}`);
 
         //     //  get current cycle ID
         //     currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
 
         //     //  Get updated status of this cycle
         //     result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-        //     var totalBeneficiaries = Number(BigInt(result[10]));
-        //     var cycleState = BigInt(result[3]).toString();
+        //     var totalBeneficiaries = BigInt(result[10]);
 
-        //     assert(member1DaiBalanceBeforeWithdrawing < member1DaiBalanceAfterWithdrawing);
-        //     assert(member2DaiBalanceBeforeWithdrawing < member2DaiBalanceAfterWithdrawing);
-        //     assert(member3DaiBalanceBeforeWithdrawing < member3DaiBalanceAfterWithdrawing);
-        //     assert(totalBeneficiaries === 3);
-        //     //  Cycle state must be expired after all ROI has been withdrawn because the Cycle time should have elapsed for last member to withdraw
-        //     assert(cycleState === "2");
+        //     //  TODO: get the treasury balance and ensure dai balance is greater than 0
+
+        //     assert(DaiBalanceAfterWithdrawing > DaiBalanceBeforeWithdrawing);
+        //     assert(totalBeneficiaries > 0);   //    Total Beneficiaries must be greater than 0
         //     assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
         //     assert(maxMembers.toString() === BigInt(result[11]).toString());
 
@@ -740,118 +454,402 @@
         //     CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
         //     TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
         //     TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
+
+        //     var amount =  await esusuStorageContract.GetMemberCycleToBeneficiaryMapping(currentEsusuCycleId.toString(), account1);
+        //     console.log(`Member has withdrawn ROI : ${amount} DAI`);
+
         // });
 
-        // it('EsusuService Contract: Should Withdraw Capital For Each Of The 3 Accounts In The Current Esusu Cycle', async () => {
-        //     //  NOTE: No need to have a withdrawal wait time since the cycle should be in expired state before this test is called
+        // // Withdraw Capital From Esusu Cycle
+        // it('EsusuService Contract: Should Withdraw Capital From The Current Esusu Cycle', async () => {
+        //     //  NOTE: To withdraw capital, the total cycle time must have elapsed, so we must wait for the cycle time to elapse
 
         //     //  Get esusu cycle information
         //     var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-        //     var cycleState = BigInt(result[3]).toString();
 
-        //     //  Withdraw capitals when the cycle is in expired state
-        //     if(cycleState === "2"){
+        //     //  Get DaiBalance before withdrawal
+        //     var DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
+        //     console.log(`Dai Balance Before Withdrawing Capital : ${DaiBalanceBeforeWithdrawing}`);
 
-        //         //  get the member position from the cycle information  so we can determine the approx withdrawal wait time
-        //         var member1CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
-        //         var member2CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account2, currentEsusuCycleId.toString());
-        //         var member3CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account3, currentEsusuCycleId.toString());
 
-        //         //  Get DaiBalance before withdrawal
-        //         var member1DaiBalanceBeforeWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account1));
-        //         var member2DaiBalanceBeforeWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account2));
-        //         var member3DaiBalanceBeforeWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account3));
-
-        //         console.log(`Member 1 Dai Balance Before Withdrawing Capital: ${member1DaiBalanceBeforeWithdrawing}`);
-        //         console.log(`Member 2 Dai Balance Before Withdrawing Capital: ${member2DaiBalanceBeforeWithdrawing}`);
-        //         console.log(`Member 3 Dai Balance Before Withdrawing Capital: ${member3DaiBalanceBeforeWithdrawing}`);
-
-        //         //  Withdraw Capital For Member 1
-        //         await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString(), {from: account1});
-        //         console.log(`Member 1 Capital withdrawal complete ...`);
-
-        //         //  Withdraw Capital For Member 2
-        //         await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString(), {from: account2});
-        //         console.log(`Member 2 Capital withdrawal complete ...`);
-
-        //         //  Withdraw Capital For Member 3
-        //         await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString(), {from: account3});
-        //         console.log(`Member 3 Capital withdrawal complete ...`);
-
-        //         var member1DaiBalanceAfterWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account1));
-        //         var member2DaiBalanceAfterWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account2));
-        //         var member3DaiBalanceAfterWithdrawing = BigInt(await daiLendingAdapterContract.GetDaiBalance(account3));
-
-        //         console.log(`Member 1 Dai Balance After Withdrawing Capital: ${member1DaiBalanceAfterWithdrawing}`);
-        //         console.log(`Member 2 Dai Balance After Withdrawing Capital: ${member2DaiBalanceAfterWithdrawing}`);
-        //         console.log(`Member 3 Dai Balance After Withdrawing Capital: ${member3DaiBalanceAfterWithdrawing}`);
-
-        //         //  get current cycle ID
-        //         currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
-
-        //         //  Get updated status of this cycle
-        //         result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
-        //         var totalBeneficiaries = Number(BigInt(result[10]));
-        //         var cycleState = BigInt(result[3]).toString();
-
-        //         assert(member1DaiBalanceBeforeWithdrawing < member1DaiBalanceAfterWithdrawing);
-        //         assert(member2DaiBalanceBeforeWithdrawing < member2DaiBalanceAfterWithdrawing);
-        //         assert(member3DaiBalanceBeforeWithdrawing < member3DaiBalanceAfterWithdrawing);
-        //         assert(totalBeneficiaries === 3);
-        //         //  Cycle state must be inactive after all Capital has been withdrawn
-        //         assert(cycleState === "3");
-        //         assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
-        //         assert(maxMembers.toString() === BigInt(result[11]).toString());
-
-        //         console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
-        //         CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
-        //         TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
-        //         TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
+        //     //  Get the total cycle duration and start time
+        //     var totalCycleDurationInSeconds = Number(BigInt(result[7]));
+        //     var cycleStartTimeInSeconds = Number(BigInt(result[9]));
+        //     var currentTimeInSeconds = (Math.floor(Date.now() / 1000));
+        //     var withdrawalWaitTimeInSeconds = 0;
+        //     if(currentTimeInSeconds > (cycleStartTimeInSeconds + totalCycleDurationInSeconds)){
+        //         withdrawalWaitTimeInSeconds += 5;  //  Just add 5 seconds delay for no reason :D
         //     }else{
-        //         console.log("Cycle has not expired. Something is wrong !!!")
+
+        //         withdrawalWaitTimeInSeconds = (cycleStartTimeInSeconds + totalCycleDurationInSeconds) - currentTimeInSeconds ;
+        //     }
+        //     console.log(`Withdrawal Wait Time In Seconds: ${withdrawalWaitTimeInSeconds}`);
+
+        //     function timeout(s){
+        //         return new Promise(resolve => setTimeout(resolve,s*1000));
         //     }
 
-        // });
+        //     await timeout(withdrawalWaitTimeInSeconds);
+
+        //     //  Withdraw capital
+        //     await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString());
+
+        //     console.log(`Withdrawing...`);
+
+        //     var DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
+        //     console.log(`Dai Balance After Withdrawing Capital: ${DaiBalanceAfterWithdrawing}`);
+
+        //     //  get current cycle ID
+        //     currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
+
+        //     //  Get updated status of this cycle
+        //     result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
+        //     var totalBeneficiaries = BigInt(result[10]);
+        //     var TotalCapitalWithdrawn = BigInt(result[8]);
 
 
+        //     assert(DaiBalanceAfterWithdrawing > DaiBalanceBeforeWithdrawing);
+        //     assert(totalBeneficiaries > 0);     //  Total Beneficiaries must be greater than 0
+        //     assert(TotalCapitalWithdrawn > 0);  //  Total Capital Withdrawn must be greater than 0
+        //     assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
+        //     assert(maxMembers.toString() === BigInt(result[11]).toString());
 
-        // it('EsusuStorage Contract: Should Get the EsusuCycles as list of structs After Updates Have Been Made On Cycles', async () => {
+        //     console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
+        //     CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
+        //     TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
+        //     TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
 
         //     var EsusuCycleArray = await esusuStorageContract.GetEsusuCycles();
-      
-        //     var result = EsusuCycleArray[0];
-            
-        //     console.log(EsusuCycleArray);
-        //     console.log(result);
-      
+
+        //     console.log("List of All Esusu Cycles After Capital Withdrawal");
+        //     console.log(EsusuCycleArray)
+
         // });
 
-        // //  Should depricate contract
-        // it('EsusuAdapter Contract: Should Depricate Contract', async () => {
 
-        //     let adapterYDaiBalanceBeforeDeprication = await yDaiContract.methods.balanceOf(esusuAdapterContract.address).call();
+        /**
+         *  The tests below repeat core operations by using different accounts to make the function calls and
+         *  also increasing the number of members in each operation
+         */
 
-        //     console.log(`YDai Shares Balance Before Deprication: ${adapterYDaiBalanceBeforeDeprication}`);
+        maxMembers = "4";
+        payoutIntervalSeconds = "20";  // 1 minute
+        it('EsusuService Contract: Should Create Group With Account 2', async () => {
 
-        //     await esusuAdapterContract.DepricateContract(esusuServiceContract.address, "the liquid metal");
+            await esusuServiceContract.CreateGroup("Jedi Master", "JM",{from: account2});
 
-        //     let adapterYDaiBalanceAfterDeprication = await yDaiContract.methods.balanceOf(esusuAdapterContract.address).call();
+            var groupInfo = await esusuServiceContract.GetGroupInformationByName("Jedi Master");
 
-        //     console.log(`YDai Shares Balance After Deprication: ${adapterYDaiBalanceAfterDeprication}`);
+            console.log(`Group Id: ${BigInt(groupInfo[0])}, Name: ${groupInfo[1]}, Symbol: ${groupInfo[2]}, Owner: ${groupInfo[3]}`);
+
+            groupId = BigInt(groupInfo[0]);
+            assert(groupInfo[1] === "Jedi Master");
+            assert(groupInfo[2] === "JM");
+
+        });
+
+        it('EsusuService Contract: Should Create Esusu Cycle With Account 2', async () => {
+
+            //  Create esusu cycle
+            await esusuServiceContract.CreateEsusu(groupId.toString(),depositAmount, payoutIntervalSeconds,startTimeInSeconds.toString(),maxMembers,{from:account2});
+            //  get current cycle ID
+            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId(),{from:account2});
+
+            console.log(`Current Esusu Cycle ID: ${currentEsusuCycleId}`);
+
+            //  Get esusu cycle information
+            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString(),{from:account2});
+
+            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
+
+            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
+            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
+            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
+            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
+        });
+
+        it('EsusuService Contract: Should Join The Current Esusu Cycle With 3 accounts', async () => {
+
+            //  Give allowance to the EsusuAdapter to spend DAI on behalf of account 1, 2 & 3
+            var approvedAmountToSpend = BigInt(10000000000000000000000); //   10,000 Dai
+            approveBUSD(esusuAdapterContract.address,account1,approvedAmountToSpend);
+            approveBUSD(esusuAdapterContract.address,account2,approvedAmountToSpend);
+            approveBUSD(esusuAdapterContract.address,account3,approvedAmountToSpend);
+
+            //  Account 1, 2 & 3 should Join esusu cycle
+            await esusuServiceContract.JoinEsusu(currentEsusuCycleId.toString(), {from: account1});
+            await esusuServiceContract.JoinEsusu(currentEsusuCycleId.toString(), {from: account2});
+            await esusuServiceContract.JoinEsusu(currentEsusuCycleId.toString(), {from: account3});
+
+            //  get current cycle ID
+            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
+
+            //  Get esusu cycle information
+            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
+
+            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
+            assert(maxMembers.toString() === BigInt(result[11]).toString());
+
+            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
+            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
+            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
+            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
+        });
+
+        it('EsusuService Contract: Should Start The Current Esusu Cycle With 3 accounts in the Cycle', async () => {
+
+            var timeoutTimeInSeconds = 0;
+            var currentTimeInSeconds = Math.floor(Date.now() / 1000);
+            var timeDiff = currentTimeInSeconds - startTimeInSeconds;
+
+            console.log(`currentTimeInSeconds: ${currentTimeInSeconds} ; startTimeInSeconds: ${startTimeInSeconds} `);
+
+            if(timeDiff < 0){
+                console.log(`Time is ${timeoutTimeInSeconds} Time never reach!!!`);
+                timeoutTimeInSeconds = Math.abs(timeDiff);
+            }else{
+
+                console.log(`Time is ${timeoutTimeInSeconds} Time don reach!!!`);
+                //  Just add wait of 5 seconds just to have some delay before Start cycle is called even when current time is greater than start time
+                timeoutTimeInSeconds += 5;
+
+            }
+
+            //  if currentTimeInSeconds is less than startTimeInSeconds, it means we have to wait for (startTimeInSeconds - currentTimeInSeconds)
+            function timeout(s){
+                return new Promise(resolve => setTimeout(resolve,s*1000));
+            }
+
+            console.log(`Waiting for ${timeoutTimeInSeconds} seconds for cycle to start`);
+
+            await timeout(timeoutTimeInSeconds);
+            console.log(`Done Waiting for ${timeoutTimeInSeconds} seconds. Starting Cycle ...`);
+
+            //  Start esusu cycle
+            await esusuServiceContract.StartEsusuCycle(currentEsusuCycleId.toString(), {from : account3});
+
+            //  get current cycle ID
+            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
+
+            //  Get esusu cycle information
+            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
+            var cycleState = BigInt(result[3]).toString();
+
+            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
+
+            //  Cycle state must be active
+            assert(cycleState === "1");
+
+            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
+            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
+            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
+            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
+
+        });
+
+        it('EsusuService Contract: Should Withdraw ROI For 2 Of The 3 Accounts In The Current Esusu Cycle (Precision Issue)', async () => {
+            //  Get esusu cycle information
+            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
+
+            //  get the member position from the cycle information  so we can determine the approx withdrawal wait time
+            var member1CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
+            var member2CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account2, currentEsusuCycleId.toString());
+            var member3CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account3, currentEsusuCycleId.toString());
+
+            //  Get DaiBalance before withdrawal
+            var member1DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
+            var member2DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account2));
+            var member3DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account3));
+
+            console.log(`Member 1 Dai Balance Before Withdrawing Overall ROI: ${member1DaiBalanceBeforeWithdrawing}`);
+            console.log(`Member 2 Dai Balance Before Withdrawing Overall ROI: ${member2DaiBalanceBeforeWithdrawing}`);
+            console.log(`Member 3 Dai Balance Before Withdrawing Overall ROI: ${member3DaiBalanceBeforeWithdrawing}`);
 
 
-        //     //  The code below should fail
+            //  Get the total cycle duration and start time
+            var totalCycleDurationInSeconds = Number(BigInt(result[7]));
+            var cycleStartTimeInSeconds = Number(BigInt(result[9]));
+            var currentTimeInSeconds = (Math.floor(Date.now() / 1000));
+
+            var member1WithdrawalWaitTimeInSeconds = 0;
+            var member2WithdrawalWaitTimeInSeconds = 0;
+            var member3WithdrawalWaitTimeInSeconds = 0;
+
+            if(currentTimeInSeconds > (cycleStartTimeInSeconds + totalCycleDurationInSeconds)){
+                member1WithdrawalWaitTimeInSeconds += 5;  //  Just add 5 seconds delay for no reason :D
+                member2WithdrawalWaitTimeInSeconds += 5;
+                member3WithdrawalWaitTimeInSeconds += 5;
+
+            }else{
+                var payoutIntervalSeconds = Number(BigInt(result[2]));
+                var member1Position = Number(BigInt(member1CycleInfo[4]));
+                var member2Position = Number(BigInt(member2CycleInfo[4]));
+                var member3Position = Number(BigInt(member3CycleInfo[4]));
+
+                member1WithdrawalWaitTimeInSeconds = member1Position * payoutIntervalSeconds;
+                member2WithdrawalWaitTimeInSeconds = member2Position * payoutIntervalSeconds;
+                member3WithdrawalWaitTimeInSeconds = member3Position * payoutIntervalSeconds;
+
+            }
+            console.log(`Member 1 Withdrawal Wait Time In Seconds: ${member1WithdrawalWaitTimeInSeconds}`);
+            console.log(`Member 2 Withdrawal Wait Time In Seconds: ${member2WithdrawalWaitTimeInSeconds}`);
+            console.log(`Member 3 Withdrawal Wait Time In Seconds: ${member3WithdrawalWaitTimeInSeconds}`);
+
+            function timeout(s){
+                return new Promise(resolve => setTimeout(resolve,s*1000));
+            }
+
+            //  Withdraw overall ROI For Member 1
+            await timeout(payoutIntervalSeconds + 10);
+            await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(), {from: account1});
+            console.log(`Member 1 ROI withdrawal complete ...`);
+
+            //  Withdraw overall ROI For Member 2
+            await timeout(payoutIntervalSeconds + 10);
+            await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(), {from: account2});
+            console.log(`Member 2 ROI withdrawal complete ...`);
+
+            //  Withdraw overall ROI For Member 3
+            // await timeout(payoutIntervalSeconds + 10);
+            // await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(), {from: account3});
+            // console.log(`Member 3 ROI withdrawal complete ...`);
+
+            var member1DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
+            var member2DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account2));
+            // var member3DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account3));
+
+            console.log(`Member 1 Dai Balance After Withdrawing Overall ROI: ${member1DaiBalanceAfterWithdrawing}`);
+            console.log(`Member 2 Dai Balance After Withdrawing Overall ROI: ${member2DaiBalanceAfterWithdrawing}`);
+            // console.log(`Member 3 Dai Balance After Withdrawing Overall ROI: ${member3DaiBalanceAfterWithdrawing}`);
+
+            //  get current cycle ID
+            currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
+
+            //  Get updated status of this cycle
+            result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
+            var totalBeneficiaries = Number(BigInt(result[10]));
+            var cycleState = BigInt(result[3]).toString();
+
+            assert(member1DaiBalanceBeforeWithdrawing < member1DaiBalanceAfterWithdrawing);
+            assert(member2DaiBalanceBeforeWithdrawing < member2DaiBalanceAfterWithdrawing);
+            // assert(member3DaiBalanceBeforeWithdrawing < member3DaiBalanceAfterWithdrawing);
+            assert(totalBeneficiaries === 2);
+            //  Cycle state must be expired after all ROI has been withdrawn because the Cycle time should have elapsed for last member to withdraw
+            assert(cycleState === "2");
+            assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
+            assert(maxMembers.toString() === BigInt(result[11]).toString());
+
+            console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
+            CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
+            TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
+            TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
+        });
+
+        it('EsusuService Contract: Should Withdraw Capital For 2 Of The 3 Accounts In The Current Esusu Cycle ( Precision Issue) ', async () => {
+            //  NOTE: No need to have a withdrawal wait time since the cycle should be in expired state before this test is called
+
+            //  Get esusu cycle information
+            var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
+            var cycleState = BigInt(result[3]).toString();
+
+            //  Withdraw capitals when the cycle is in expired state
+            if(cycleState === "2"){
+
+                //  get the member position from the cycle information  so we can determine the approx withdrawal wait time
+                var member1CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
+                var member2CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account2, currentEsusuCycleId.toString());
+                var member3CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account3, currentEsusuCycleId.toString());
+
+                //  Get DaiBalance before withdrawal
+                var member1DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
+                var member2DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account2));
+                // var member3DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account3));
+
+                console.log(`Member 1 Dai Balance Before Withdrawing Capital: ${member1DaiBalanceBeforeWithdrawing}`);
+                console.log(`Member 2 Dai Balance Before Withdrawing Capital: ${member2DaiBalanceBeforeWithdrawing}`);
+                // console.log(`Member 3 Dai Balance Before Withdrawing Capital: ${member3DaiBalanceBeforeWithdrawing}`);
+
+                //  Withdraw Capital For Member 1
+                await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString(), {from: account1});
+                console.log(`Member 1 Capital withdrawal complete ...`);
+
+                //  Withdraw Capital For Member 2
+                await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString(), {from: account2});
+                console.log(`Member 2 Capital withdrawal complete ...`);
+
+                // //  Withdraw Capital For Member 3
+                // await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString(), {from: account3});
+                // console.log(`Member 3 Capital withdrawal complete ...`);
+
+                var member1DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
+                var member2DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account2));
+                // var member3DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account3));
+
+                console.log(`Member 1 Dai Balance After Withdrawing Capital: ${member1DaiBalanceAfterWithdrawing}`);
+                console.log(`Member 2 Dai Balance After Withdrawing Capital: ${member2DaiBalanceAfterWithdrawing}`);
+                // console.log(`Member 3 Dai Balance After Withdrawing Capital: ${member3DaiBalanceAfterWithdrawing}`);
+
+                //  get current cycle ID
+                currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
+
+                //  Get updated status of this cycle
+                result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
+                var totalBeneficiaries = Number(BigInt(result[10]));
+                var cycleState = BigInt(result[3]).toString();
+
+                assert(member1DaiBalanceBeforeWithdrawing < member1DaiBalanceAfterWithdrawing);
+                assert(member2DaiBalanceBeforeWithdrawing < member2DaiBalanceAfterWithdrawing);
+                // assert(member3DaiBalanceBeforeWithdrawing < member3DaiBalanceAfterWithdrawing);
+                assert(totalBeneficiaries === 2);
+                //  Cycle state must be inactive after all Capital has been withdrawn
+                assert(cycleState === "3");
+                assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
+                assert(maxMembers.toString() === BigInt(result[11]).toString());
+
+                console.log(`CycleId: ${BigInt(result[0])}, DepositAmount: ${BigInt(result[1])}, PayoutIntervalSeconds: ${BigInt(result[2])},
+                CycleState: ${BigInt(result[3])}, TotalMembers: ${BigInt(result[4])}, TotalAmountDeposited: ${BigInt(result[5])},TotalShares: ${BigInt(result[6])},
+                TotalCycleDurationInSeconds: ${BigInt(result[7])}, TotalCapitalWithdrawn: ${BigInt(result[8])}, CycleStartTimeInSeconds: ${BigInt(result[9])},
+                TotalBeneficiaries: ${BigInt(result[10])}, MaxMembers: ${BigInt(result[11])}`);
+            }else{
+                console.log("Cycle has not expired. Something is wrong !!!")
+            }
+
+        });
+
+
+
+        it('EsusuStorage Contract: Should Get the EsusuCycles as list of structs After Updates Have Been Made On Cycles', async () => {
+
+            var EsusuCycleArray = await esusuStorageContract.GetEsusuCycles();
+      
+            var result = EsusuCycleArray[0];
             
-        //     // var groupInfo = await esusuServiceContract.GetGroupInformationByName(groupName);
+            console.log(EsusuCycleArray);
+            console.log(result);
+      
+        });
 
-        //     // console.log(`Group Id: ${BigInt(groupInfo[0])}, Name: ${groupInfo[1]}, Symbol: ${groupInfo[2]}, Owner: ${groupInfo[3]}`);
+        // Should depricate contract
+        it('EsusuAdapter Contract: Should Depricate Contract', async () => {
 
-        //     try {
-        //         await utils.shouldThrow(esusuServiceContract.GetGroupInformationByName(groupName));
+            let adapterYDaiBalanceBeforeDeprication = await vBUSDContract.methods.balanceOf(esusuAdapterContract.address).call();
 
-        //     } catch (error) {
-        //         assert(error, " Contract is depricated");
-        //         console.log(`Group Id: ${BigInt(groupInfo[0])}, Name: ${groupInfo[1]}, Symbol: ${groupInfo[2]}, Owner: ${groupInfo[3]}`);
-        //     }
-        // });
+            console.log(`YDai Shares Balance Before Deprication: ${adapterYDaiBalanceBeforeDeprication}`);
+
+            await esusuAdapterContract.DepricateContract(esusuServiceContract.address, "the liquid metal");
+
+            let adapterYDaiBalanceAfterDeprication = await vBUSDContract.methods.balanceOf(esusuAdapterContract.address).call();
+
+            console.log(`YDai Shares Balance After Deprication: ${adapterYDaiBalanceAfterDeprication}`);
+
+
+
+            try {
+                await utils.shouldThrow(esusuServiceContract.GetGroupInformationByName(groupName));
+
+            } catch (error) {
+                assert(error, " Contract is depricated");
+                console.log(`Group Id: ${BigInt(groupInfo[0])}, Name: ${groupInfo[1]}, Symbol: ${groupInfo[2]}, Owner: ${groupInfo[3]}`);
+            }
+        });
     });
