@@ -68,9 +68,9 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
 
         IEsusuStorage immutable _esusuStorage;
         IEsusuAdapter immutable _esusuAdapterContract;
-        IERC20 immutable _dai = IERC20(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);             //  Pegged - BUSD on Binance Smart Chain
-        IVBUSD immutable _yDai = IVBUSD(0x95c78222B3D6e262426483D42CfA53685A67Ab9D);            //  Venus BUSD Shares
-        IVenusLendingService _iDaiLendingService;
+        IERC20 immutable _BUSD = IERC20(0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56);             //  Pegged - BUSD on Binance Smart Chain
+        IVBUSD immutable _vBUSD = IVBUSD(0x95c78222B3D6e262426483D42CfA53685A67Ab9D);            //  Venus BUSD Shares
+        IVenusLendingService _venusLendingService;
         bool _isActive = true;
         uint256 _feePrecision = 10;     //  This determines the lower limit of the fee to be charged. With precsion of 10, it means our fee can have a precision of 0.1% and above
         uint256 _totalTokenReward;      //  This tracks the total number of token rewards distributed on the esusu 
@@ -88,13 +88,12 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
 
         }
 
-        function UpdateDaiLendingService(address daiLendingServiceContractAddress) active onlyOwner external {
-            _iDaiLendingService = IVenusLendingService(daiLendingServiceContractAddress);
+        function UpdateVenusLendingService(address venusLendingServiceContractAddress) active onlyOwner external {
+            _venusLendingService = IVenusLendingService(venusLendingServiceContractAddress);
         }
-     function setGroupCreatorRewardPercent (uint percent) external onlyOwner {
-            _groupCreatorRewardPercent = percent;
-     }
-
+        function setGroupCreatorRewardPercent (uint percent) external onlyOwner {
+                _groupCreatorRewardPercent = percent;
+        }
         function UpdateFeePrecision(uint256 feePrecision) onlyOwner external{
             _feePrecision = feePrecision;
         }
@@ -124,34 +123,34 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         require(_isMemberEligibleToWithdrawCapital(esusuCycleId,member), "member is not eligible to withdraw");        
         //  Add member to capital withdrawn mapping
 
-        //  Get the current yDaiSharesPerCycle and call the WithdrawByShares function on the daiLending Service
-        uint256 yDaiSharesPerCycle = _esusuStorage.GetEsusuCycleTotalShares(esusuCycleId);
+        //  Get the current vBUSDSharesPerCycle and call the WithdrawByShares function on the venus lending Service
+        uint256 vBUSDSharesPerCycle = _esusuStorage.GetEsusuCycleTotalShares(esusuCycleId);
 
 
         //  transfer yDaiShares from the adapter contract to here
-        _esusuAdapterContract.TransferYDaiSharesToWithdrawalDelegate(yDaiSharesPerCycle);        
-        //  Get the yDaiSharesForContractBeforeWithdrawal 
-        uint256 yDaiSharesForContractBeforeWithdrawal = _yDai.balanceOf(address(this));
+        _esusuAdapterContract.TransferVBUSDSharesToWithdrawalDelegate(vBUSDSharesPerCycle);        
+        //  Get the vBUSDSharesForContractBeforeWithdrawal 
+        uint256 vBUSDSharesForContractBeforeWithdrawal = _vBUSD.balanceOf(address(this));
         //  Withdraw the Dai. At this point, we have withdrawn  Dai Capital deposited by this member for this cycle and we will now transfer the dai capital to the member
-        address daiLendingAdapterContractAddress = _iDaiLendingService.GetVenusLendingAdapterAddress();
+        address venusLendingAdapterContractAddress = _venusLendingService.GetVenusLendingAdapterAddress();
 
-        _yDai.approve(daiLendingAdapterContractAddress,yDaiSharesPerCycle);
+        _vBUSD.approve(venusLendingAdapterContractAddress,vBUSDSharesPerCycle);
 
-        _iDaiLendingService.WithdrawByShares(DepositAmount,yDaiSharesPerCycle);
+        _venusLendingService.WithdrawByShares(DepositAmount,vBUSDSharesPerCycle);
         
         //  Now the Dai is in this contract, transfer it to the member 
-        _dai.safeTransfer(member, DepositAmount);
+        _BUSD.safeTransfer(member, DepositAmount);
         
         //  Reward member with Xend Tokens
         _rewardMember(_esusuStorage.GetEsusuCycleDuration(esusuCycleId),member,DepositAmount,CycleId);
         
-        //  Get the yDaiSharesForContractAfterWithdrawal 
-        uint256 yDaiSharesForContractAfterWithdrawal = _yDai.balanceOf(address(this));
+        //  Get the vBUSDSharesForContractAfterWithdrawal 
+        uint256 vBUSDSharesForContractAfterWithdrawal = _vBUSD.balanceOf(address(this));
         
-        require(yDaiSharesForContractBeforeWithdrawal > yDaiSharesForContractAfterWithdrawal, "yDai shares before withdrawal must be greater !!!");
+        require(vBUSDSharesForContractBeforeWithdrawal > vBUSDSharesForContractAfterWithdrawal, "vBUSD shares before withdrawal must be greater !!!");
         
         //  Update the total balanceShares for this cycle 
-        uint256 cycleTotalShares = yDaiSharesPerCycle.sub(yDaiSharesForContractBeforeWithdrawal.sub(yDaiSharesForContractAfterWithdrawal));
+        uint256 cycleTotalShares = vBUSDSharesPerCycle.sub(vBUSDSharesForContractBeforeWithdrawal.sub(vBUSDSharesForContractAfterWithdrawal));
 
         //  Add this member to the CycleToMemberWithdrawnCapitalMapping
 
@@ -170,19 +169,19 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
 
             //  Withdraw DAI equivalent fof TotalShares
 
-            _yDai.approve(daiLendingAdapterContractAddress,cycleTotalShares);
-            _iDaiLendingService.WithdrawBySharesOnly(cycleTotalShares);
+            _vBUSD.approve(venusLendingAdapterContractAddress,cycleTotalShares);
+            _venusLendingService.WithdrawBySharesOnly(cycleTotalShares);
                    
             //  Now the Dai is in this contract, transfer it to the treasury contract 
-            uint256 balance = _dai.balanceOf(address(this));
-            _dai.approve(address(_treasuryContract),balance);
-            _treasuryContract.depositToken(address(_dai));
+            uint256 balance = _BUSD.balanceOf(address(this));
+            _BUSD.approve(address(_treasuryContract),balance);
+            _treasuryContract.depositToken(address(_BUSD));
 
         }else{
 
             //  Since we have not withdrawn all the capital, then Send the yDai shares back to the adapter contract,
             //  this contract should not hold any coins
-            _yDai.safeTransfer(address(_esusuAdapterContract),_yDai.balanceOf(address(this)));
+            _vBUSD.safeTransfer(address(_esusuAdapterContract),_vBUSD.balanceOf(address(this)));
 
         }
 
@@ -224,7 +223,7 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         at all times till TotalShares becomes approximately zero when all amounts have been withdrawn including capital invested
 
         - Track the yDai shares that belong to this cycle using the derived equation below for withdraw operation
-            - yDaiSharesPerCycle = Current yDai Shares in the cycle - Change in yDaiSharesForContract
+            - vBUSDSharesPerCycle = Current yDai Shares in the cycle - Change in yDaiSharesForContract
             - Change in yDaiSharesForContract = yDai.balanceOf(address(this)) before withdraw operation - yDai.balanceOf(address(this)) after withdraw operation
 
     */
@@ -238,10 +237,10 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         
         uint256 currentBalanceShares = _esusuStorage.GetEsusuCycleTotalShares(esusuCycleId);
         
-        // uint256 pricePerFullShare = _iDaiLendingService.GetPricePerFullShare();
+        // uint256 pricePerFullShare = _venusLendingService.GetPricePerFullShare();
         
-        // uint256 overallGrossDaiBalance = currentBalanceShares.mul(_iDaiLendingService.GetPricePerFullShare()).div(1e18);
-        uint256 overallGrossDaiBalance = currentBalanceShares.mul(_iDaiLendingService.GetPricePerFullShare());
+        // uint256 overallGrossDaiBalance = currentBalanceShares.mul(_venusLendingService.GetPricePerFullShare()).div(1e18);
+        uint256 overallGrossDaiBalance = currentBalanceShares.mul(_venusLendingService.GetPricePerFullShare());
 
         uint256 CycleId = esusuCycleId;
 
@@ -255,33 +254,33 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
 
         uint Mroi = Troi.div(Ta);
 
-        //  Get the current yDaiSharesPerCycle and call the WithdrawByShares function on the daiLending Service
-        // uint yDaiSharesPerCycle = currentBalanceShares;
+        //  Get the current vBUSDSharesPerCycle and call the WithdrawByShares function on the daiLending Service
+        // uint vBUSDSharesPerCycle = currentBalanceShares;
 
         //  transfer yDaiShares from the adapter contract to here
-        _esusuAdapterContract.TransferYDaiSharesToWithdrawalDelegate(currentBalanceShares);
+        _esusuAdapterContract.TransferVBUSDSharesToWithdrawalDelegate(currentBalanceShares);
 
-        //  Get the yDaiSharesForContractBeforeWithdrawal
-        uint yDaiSharesForContractBeforeWithdrawal = _yDai.balanceOf(address(this));
+        //  Get the vBUSDSharesForContractBeforeWithdrawal
+        uint vBUSDSharesForContractBeforeWithdrawal = _vBUSD.balanceOf(address(this));
 
         //  Withdraw the Dai. At this point, we have withdrawn the Dai ROI for this member and the dai ROI is in this contract, we will now transfer it to the member
-        address daiLendingAdapterContractAddress = _iDaiLendingService.GetVenusLendingAdapterAddress();
+        address venusLendingAdapterContractAddress = _venusLendingService.GetVenusLendingAdapterAddress();
 
         //  Before this function is called, we will have triggered a transfer of yDaiShares from the adapter to this withdrawal contract
-        _yDai.approve(daiLendingAdapterContractAddress,currentBalanceShares);
-        _iDaiLendingService.WithdrawByShares(Mroi,currentBalanceShares);
+        _vBUSD.approve(venusLendingAdapterContractAddress,currentBalanceShares);
+        _venusLendingService.WithdrawByShares(Mroi,currentBalanceShares);
 
 
         //  Now the Dai is in this contract, transfer the net ROI to the member and fee to treasury contract
         sendROI(Mroi,member,CycleId);
           
-        //  Get the yDaiSharesForContractAfterWithdrawal 
-        uint256 yDaiSharesForContractAfterWithdrawal = _yDai.balanceOf(address(this));
+        //  Get the vBUSDSharesForContractAfterWithdrawal 
+        uint256 vBUSDSharesForContractAfterWithdrawal = _vBUSD.balanceOf(address(this));
         
-        require(yDaiSharesForContractBeforeWithdrawal > yDaiSharesForContractAfterWithdrawal, "yDai shares before withdrawal must be greater !!!");
+        require(vBUSDSharesForContractBeforeWithdrawal > vBUSDSharesForContractAfterWithdrawal, "yDai shares before withdrawal must be greater !!!");
         
         //  Update the total balanceShares for this cycle 
-        uint256 totalShares = currentBalanceShares.sub(yDaiSharesForContractBeforeWithdrawal.sub(yDaiSharesForContractAfterWithdrawal));
+        uint256 totalShares = currentBalanceShares.sub(vBUSDSharesForContractBeforeWithdrawal.sub(vBUSDSharesForContractAfterWithdrawal));
         
         //  Increase total number of beneficiaries by 1
         uint256 totalBeneficiaries = _esusuStorage.GetEsusuCycleTotalBeneficiaries(CycleId).add(1);
@@ -302,7 +301,7 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         _esusuStorage.UpdateEsusuCycleDuringROIWithdrawal(CycleId, totalShares,totalBeneficiaries);
 
         //  Send the yDai shares back to the adapter contract, this contract should not hold any coins
-        _yDai.safeTransfer(address(_esusuAdapterContract),_yDai.balanceOf(address(this)));
+        _vBUSD.safeTransfer(address(_esusuAdapterContract),_vBUSD.balanceOf(address(this)));
         
         //  emit event 
         _emitROIWithdrawalEvent(member,Mroi,CycleId);
@@ -339,19 +338,19 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
 
 
         //  Send ROI to member 
-        _dai.safeTransfer(memberAddress, memberROINet);
+        _BUSD.safeTransfer(memberAddress, memberROINet);
 
         uint256 creatorReward =  fee.mul(_groupCreatorRewardPercent).div(_feePrecision.mul(100));
 
         uint256 finalFee = fee.sub(creatorReward);
         //  Send deducted fee to treasury
         //  Approve the treasury contract
-        _dai.approve(address(_treasuryContract),finalFee);
-        _treasuryContract.depositToken(address(_dai));
+        _BUSD.approve(address(_treasuryContract),finalFee);
+        _treasuryContract.depositToken(address(_BUSD));
 
         address cycleOwner = _esusuStorage.GetCycleOwner(esusuCycleId);
         
-        _dai.safeTransfer(cycleOwner, creatorReward);
+        _BUSD.safeTransfer(cycleOwner, creatorReward);
 
 
     }

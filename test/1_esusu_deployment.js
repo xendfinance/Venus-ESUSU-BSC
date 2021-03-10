@@ -132,7 +132,7 @@
             console.log("2->Venus Adapter Address Updated In Venus Lending Service ...");
 
             //3. Update the DaiLendingService Address in the EsusuAdapter Contract
-            await esusuAdapterContract.UpdateDaiLendingService(venusLendingServiceContract.address);
+            await esusuAdapterContract.UpdateVenusLendingService(venusLendingServiceContract.address);
             console.log("3->VenusLendingService Address Updated In EsusuAdapter ...");
 
             //4. Update the EsusuAdapter Address in the EsusuService Contract
@@ -152,7 +152,7 @@
             console.log("7->EsusuAdapter Has Updated Esusu Adapter Withdrawal Delegate Address ...");
 
             //8. Esusu Adapter Withdrawal Delegate should Update Dai Lending Service
-            await esusuAdapterWithdrawalDelegateContract.UpdateDaiLendingService(venusLendingServiceContract.address);
+            await esusuAdapterWithdrawalDelegateContract.UpdateVenusLendingService(venusLendingServiceContract.address);
             console.log("8->Esusu Adapter Withdrawal Delegate Has Updated Dai Lending Service ...");
 
             //9. Esusu Service should update esusu adapter withdrawal delegate
@@ -226,7 +226,7 @@
         var groupSymbol = "Ω";
         var groupId = null;
         var depositAmount = "2000000000000000000000";   //2,000 DAI 10000000000000000000000
-        var payoutIntervalSeconds = "30";  // 2 minutes
+        var payoutIntervalSeconds = "20";  // 20 seconds
         var startTimeInSeconds = Math.floor((Date.now() + 120)/1000); // starts 2 minutes afer current time
         var maxMembers = "2";
         var currentEsusuCycleId = null;
@@ -399,9 +399,9 @@
         //     var memberCyclerInfo = await esusuServiceContract.GetMemberCycleInfo(account1, currentEsusuCycleId.toString());
 
 
-        //     //  Get DaiBalance before withdrawal
-        //     var DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-        //     console.log(`Dai Balance Before Withdrawing Overall ROI: ${DaiBalanceBeforeWithdrawing}`);
+        //     //  Get BUSDBalance before withdrawal
+        //     var BUSDBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account1));
+        //     console.log(`Dai Balance Before Withdrawing Overall ROI: ${BUSDBalanceBeforeWithdrawing}`);
 
 
         //     //  Get the total cycle duration and start time
@@ -415,7 +415,7 @@
         //         var payoutIntervalSeconds = Number(BigInt(result[2]));
         //         var memberPosition = Number(BigInt(memberCyclerInfo[4]));
 
-        //         withdrawalWaitTimeInSeconds = (memberPosition * payoutIntervalSeconds) + 10;
+        //         withdrawalWaitTimeInSeconds = (memberPosition * payoutIntervalSeconds);
         //     }
         //     console.log(`Withdrawal Wait Time In Seconds: ${withdrawalWaitTimeInSeconds}`);
 
@@ -433,8 +433,8 @@
 
         //     console.log(`Withdrawing...`);
 
-        //     var DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-        //     console.log(`Dai Balance After Withdrawing Overall ROI: ${DaiBalanceAfterWithdrawing}`);
+        //     var BUSDBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account1));
+        //     console.log(`Dai Balance After Withdrawing Overall ROI: ${BUSDBalanceAfterWithdrawing}`);
 
         //     //  get current cycle ID
         //     currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
@@ -445,7 +445,7 @@
 
         //     //  TODO: get the treasury balance and ensure dai balance is greater than 0
 
-        //     assert(DaiBalanceAfterWithdrawing > DaiBalanceBeforeWithdrawing);
+        //     assert(BUSDBalanceAfterWithdrawing > BUSDBalanceBeforeWithdrawing);
         //     assert(totalBeneficiaries > 0);   //    Total Beneficiaries must be greater than 0
         //     assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
         //     assert(maxMembers.toString() === BigInt(result[11]).toString());
@@ -468,8 +468,8 @@
         //     var result = await esusuServiceContract.GetEsusuCycle(currentEsusuCycleId.toString());
 
         //     //  Get DaiBalance before withdrawal
-        //     var DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-        //     console.log(`Dai Balance Before Withdrawing Capital : ${DaiBalanceBeforeWithdrawing}`);
+        //     var BUSDBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account1));
+        //     console.log(`Dai Balance Before Withdrawing Capital : ${BUSDBalanceBeforeWithdrawing}`);
 
 
         //     //  Get the total cycle duration and start time
@@ -496,8 +496,8 @@
 
         //     console.log(`Withdrawing...`);
 
-        //     var DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-        //     console.log(`Dai Balance After Withdrawing Capital: ${DaiBalanceAfterWithdrawing}`);
+        //     var BUSDBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account1));
+        //     console.log(`Dai Balance After Withdrawing Capital: ${BUSDBalanceAfterWithdrawing}`);
 
         //     //  get current cycle ID
         //     currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
@@ -508,7 +508,7 @@
         //     var TotalCapitalWithdrawn = BigInt(result[8]);
 
 
-        //     assert(DaiBalanceAfterWithdrawing > DaiBalanceBeforeWithdrawing);
+        //     assert(BUSDBalanceAfterWithdrawing > BUSDBalanceBeforeWithdrawing);
         //     assert(totalBeneficiaries > 0);     //  Total Beneficiaries must be greater than 0
         //     assert(TotalCapitalWithdrawn > 0);  //  Total Capital Withdrawn must be greater than 0
         //     assert(currentEsusuCycleId.toString() === BigInt(result[0]).toString());
@@ -657,13 +657,13 @@
             var member3CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account3, currentEsusuCycleId.toString());
 
             //  Get DaiBalance before withdrawal
-            var member1DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-            var member2DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account2));
-            var member3DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account3));
+            var member1BUSDBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account1));
+            var member2BUSDBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account2));
+            var member3BUSDBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account3));
 
-            console.log(`Member 1 Dai Balance Before Withdrawing Overall ROI: ${member1DaiBalanceBeforeWithdrawing}`);
-            console.log(`Member 2 Dai Balance Before Withdrawing Overall ROI: ${member2DaiBalanceBeforeWithdrawing}`);
-            console.log(`Member 3 Dai Balance Before Withdrawing Overall ROI: ${member3DaiBalanceBeforeWithdrawing}`);
+            console.log(`Member 1 Dai Balance Before Withdrawing Overall ROI: ${member1BUSDBalanceBeforeWithdrawing}`);
+            console.log(`Member 2 Dai Balance Before Withdrawing Overall ROI: ${member2BUSDBalanceBeforeWithdrawing}`);
+            console.log(`Member 3 Dai Balance Before Withdrawing Overall ROI: ${member3BUSDBalanceBeforeWithdrawing}`);
 
 
             //  Get the total cycle duration and start time
@@ -714,13 +714,13 @@
             // await esusuServiceContract.WithdrawROIFromEsusuCycle(currentEsusuCycleId.toString(), {from: account3});
             // console.log(`Member 3 ROI withdrawal complete ...`);
 
-            var member1DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-            var member2DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account2));
-            // var member3DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account3));
+            var member1BUSDBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account1));
+            var member2BUSDBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account2));
+            // var member3BUSDBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account3));
 
-            console.log(`Member 1 Dai Balance After Withdrawing Overall ROI: ${member1DaiBalanceAfterWithdrawing}`);
-            console.log(`Member 2 Dai Balance After Withdrawing Overall ROI: ${member2DaiBalanceAfterWithdrawing}`);
-            // console.log(`Member 3 Dai Balance After Withdrawing Overall ROI: ${member3DaiBalanceAfterWithdrawing}`);
+            console.log(`Member 1 Dai Balance After Withdrawing Overall ROI: ${member1BUSDBalanceAfterWithdrawing}`);
+            console.log(`Member 2 Dai Balance After Withdrawing Overall ROI: ${member2BUSDBalanceAfterWithdrawing}`);
+            // console.log(`Member 3 Dai Balance After Withdrawing Overall ROI: ${member3BUSDBalanceAfterWithdrawing}`);
 
             //  get current cycle ID
             currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
@@ -730,9 +730,9 @@
             var totalBeneficiaries = Number(BigInt(result[10]));
             var cycleState = BigInt(result[3]).toString();
 
-            assert(member1DaiBalanceBeforeWithdrawing < member1DaiBalanceAfterWithdrawing);
-            assert(member2DaiBalanceBeforeWithdrawing < member2DaiBalanceAfterWithdrawing);
-            // assert(member3DaiBalanceBeforeWithdrawing < member3DaiBalanceAfterWithdrawing);
+            assert(member1BUSDBalanceBeforeWithdrawing < member1BUSDBalanceAfterWithdrawing);
+            assert(member2BUSDBalanceBeforeWithdrawing < member2BUSDBalanceAfterWithdrawing);
+            // assert(member3BUSDBalanceBeforeWithdrawing < member3BUSDBalanceAfterWithdrawing);
             assert(totalBeneficiaries === 2);
             //  Cycle state must be expired after all ROI has been withdrawn because the Cycle time should have elapsed for last member to withdraw
             assert(cycleState === "2");
@@ -761,13 +761,13 @@
                 var member3CycleInfo = await esusuServiceContract.GetMemberCycleInfo(account3, currentEsusuCycleId.toString());
 
                 //  Get DaiBalance before withdrawal
-                var member1DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-                var member2DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account2));
-                // var member3DaiBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account3));
+                var member1BUSDBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account1));
+                var member2BUSDBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account2));
+                // var member3BUSDBalanceBeforeWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account3));
 
-                console.log(`Member 1 Dai Balance Before Withdrawing Capital: ${member1DaiBalanceBeforeWithdrawing}`);
-                console.log(`Member 2 Dai Balance Before Withdrawing Capital: ${member2DaiBalanceBeforeWithdrawing}`);
-                // console.log(`Member 3 Dai Balance Before Withdrawing Capital: ${member3DaiBalanceBeforeWithdrawing}`);
+                console.log(`Member 1 Dai Balance Before Withdrawing Capital: ${member1BUSDBalanceBeforeWithdrawing}`);
+                console.log(`Member 2 Dai Balance Before Withdrawing Capital: ${member2BUSDBalanceBeforeWithdrawing}`);
+                // console.log(`Member 3 Dai Balance Before Withdrawing Capital: ${member3BUSDBalanceBeforeWithdrawing}`);
 
                 //  Withdraw Capital For Member 1
                 await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString(), {from: account1});
@@ -781,13 +781,13 @@
                 // await esusuServiceContract.WithdrawCapitalFromEsusuCycle(currentEsusuCycleId.toString(), {from: account3});
                 // console.log(`Member 3 Capital withdrawal complete ...`);
 
-                var member1DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account1));
-                var member2DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account2));
-                // var member3DaiBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetDAIBalance(account3));
+                var member1BUSDBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account1));
+                var member2BUSDBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account2));
+                // var member3BUSDBalanceAfterWithdrawing = BigInt(await venusLendingAdapterContract.GetBUSDBalance(account3));
 
-                console.log(`Member 1 Dai Balance After Withdrawing Capital: ${member1DaiBalanceAfterWithdrawing}`);
-                console.log(`Member 2 Dai Balance After Withdrawing Capital: ${member2DaiBalanceAfterWithdrawing}`);
-                // console.log(`Member 3 Dai Balance After Withdrawing Capital: ${member3DaiBalanceAfterWithdrawing}`);
+                console.log(`Member 1 Dai Balance After Withdrawing Capital: ${member1BUSDBalanceAfterWithdrawing}`);
+                console.log(`Member 2 Dai Balance After Withdrawing Capital: ${member2BUSDBalanceAfterWithdrawing}`);
+                // console.log(`Member 3 Dai Balance After Withdrawing Capital: ${member3BUSDBalanceAfterWithdrawing}`);
 
                 //  get current cycle ID
                 currentEsusuCycleId = BigInt(await esusuServiceContract.GetCurrentEsusuCycleId());
@@ -797,9 +797,9 @@
                 var totalBeneficiaries = Number(BigInt(result[10]));
                 var cycleState = BigInt(result[3]).toString();
 
-                assert(member1DaiBalanceBeforeWithdrawing < member1DaiBalanceAfterWithdrawing);
-                assert(member2DaiBalanceBeforeWithdrawing < member2DaiBalanceAfterWithdrawing);
-                // assert(member3DaiBalanceBeforeWithdrawing < member3DaiBalanceAfterWithdrawing);
+                assert(member1BUSDBalanceBeforeWithdrawing < member1BUSDBalanceAfterWithdrawing);
+                assert(member2BUSDBalanceBeforeWithdrawing < member2BUSDBalanceAfterWithdrawing);
+                // assert(member3BUSDBalanceBeforeWithdrawing < member3BUSDBalanceAfterWithdrawing);
                 assert(totalBeneficiaries === 2);
                 //  Cycle state must be inactive after all Capital has been withdrawn
                 assert(cycleState === "3");
