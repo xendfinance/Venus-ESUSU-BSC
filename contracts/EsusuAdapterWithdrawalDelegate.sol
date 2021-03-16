@@ -231,12 +231,12 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         
         uint256 totalMembers = _esusuStorage.GetTotalMembersInCycle(esusuCycleId);
 
-        bool isMemberEligibleToWithdraw = _isMemberEligibleToWithdrawROI(esusuCycleId,member);
-
-        require(isMemberEligibleToWithdraw, "Member cannot withdraw at this time");
+        require(_isMemberEligibleToWithdrawROI(esusuCycleId,member), "Member cannot withdraw at this time");
         
         uint256 currentBalanceShares = _esusuStorage.GetEsusuCycleTotalShares(esusuCycleId);
         
+        (,uint256 depositAmount,,,) = _esusuStorage.GetEsusuCycleBasicInformation(esusuCycleId);
+
         // uint256 pricePerFullShare = _venusLendingService.GetPricePerFullShare();
         
         // uint256 overallGrossDaiBalance = currentBalanceShares.mul(_venusLendingService.GetPricePerFullShare()).div(1e18);
@@ -250,8 +250,15 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         uint256 Bt = _esusuStorage.GetEsusuCycleTotalBeneficiaries(esusuCycleId);
 
         uint256 Ta = totalMembers.sub(Bt);
-        uint256 Troi = overallGrossDaiBalance.sub(_esusuStorage.GetEsusuCycleTotalAmountDeposited(esusuCycleId).sub(_esusuStorage.GetEsusuCycleTotalCapitalWithdrawn(esusuCycleId)));
-
+        uint256 Troi = 0;
+        
+        //  If ROI has not been earned then return ROI as zero to prevent subtraction overflow error.
+        if(overallGrossDaiBalance > (depositAmount.mul(totalMembers)).add(_esusuStorage.GetEsusuCycleTotalCapitalWithdrawn(esusuCycleId))){
+            
+            Troi = overallGrossDaiBalance.sub((depositAmount.mul(totalMembers)).sub(_esusuStorage.GetEsusuCycleTotalCapitalWithdrawn(esusuCycleId)));
+        }else{
+            revert("No ROI Generated within timeframe !!!");
+        }
         uint Mroi = Troi.div(Ta);
 
         //  Get the current vBUSDSharesPerCycle and call the WithdrawByShares function on the daiLending Service
