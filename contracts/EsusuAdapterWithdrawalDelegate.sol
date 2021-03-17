@@ -253,7 +253,7 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         uint256 Troi = 0;
         
         //  If ROI has not been earned then return ROI as zero to prevent subtraction overflow error.
-        if(overallGrossDaiBalance > (depositAmount.mul(totalMembers)).add(_esusuStorage.GetEsusuCycleTotalCapitalWithdrawn(esusuCycleId))){
+        if(overallGrossDaiBalance > (depositAmount.mul(totalMembers)).sub(_esusuStorage.GetEsusuCycleTotalCapitalWithdrawn(esusuCycleId))){
             
             Troi = overallGrossDaiBalance.sub((depositAmount.mul(totalMembers)).sub(_esusuStorage.GetEsusuCycleTotalCapitalWithdrawn(esusuCycleId)));
         }else{
