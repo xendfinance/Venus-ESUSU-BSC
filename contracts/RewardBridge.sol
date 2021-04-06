@@ -24,9 +24,10 @@ contract RewardBridge is XendTokenMinters,IRewardBridge {
     function rewardUser(uint256 amount, address recipient) external override onlyMinter{
         require(recipient!=address(0x0),"Invalid recipient address");
         uint256 balance = _balance();
-        require(balance>=amount,"Insufficient reward tokens in reward bridge vault");
-        IERC20 tokenContract = IERC20(RewardTokenAddress);
-        tokenContract.safeTransfer(recipient, amount);
+        if(balance>amount){
+            IERC20 tokenContract = IERC20(RewardTokenAddress);
+            tokenContract.safeTransfer(recipient, amount);
+        }
     }
 
     function updateTokenAddress(address newTokenAddress) external override onlyOwner {
@@ -38,6 +39,10 @@ contract RewardBridge is XendTokenMinters,IRewardBridge {
             tokenContract.safeTransfer(msg.sender,oldTokenAddressBalance);
         }
         RewardTokenAddress = newTokenAddress;
+    }
+
+    function getTokenAddress() external view override returns (address){
+        return RewardTokenAddress;
     }
 
     function withdrawTokens(address tokenAddress) external override onlyOwner{
