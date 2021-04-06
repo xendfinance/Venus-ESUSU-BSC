@@ -5,12 +5,13 @@ const VenusLendingServiceContract = artifacts.require("VenusLendingService");
 const GroupsContract = artifacts.require('Groups');
 const TreasuryContract = artifacts.require('Treasury');
 const SavingsConfigContract = artifacts.require('SavingsConfig');
-const XendTokenContract = artifacts.require('XendToken');
+const RewardBridge = artifacts.require('RewardBridge');
 const EsusuServiceContract = artifacts.require('EsusuService');
 const RewardConfigContract = artifacts.require('RewardConfig');
 const EsusuAdapterContract = artifacts.require('EsusuAdapter');
 const EsusuAdapterWithdrawalDelegateContract = artifacts.require('EsusuAdapterWithdrawalDelegate');
 const EsusuStorageContract = artifacts.require('EsusuStorage');
+const XendTokenContract = artifacts.require('XendToken');
 
 module.exports = function (deployer) {
 
@@ -28,8 +29,10 @@ module.exports = function (deployer) {
      await deployer.deploy(VenusLendingServiceContract);
 
      await deployer.deploy(VenusAdapterContract,VenusLendingServiceContract.address);
-
+     
      await deployer.deploy(XendTokenContract, "Xend Token", "$XEND","18","200000000000000000000000000");
+
+     await deployer.deploy(RewardBridge,XendTokenContract.address);
 
      await deployer.deploy(EsusuServiceContract);
 
@@ -52,8 +55,10 @@ module.exports = function (deployer) {
                               "esusufee",
                               TreasuryContract.address,
                               RewardConfigContract.address,
-                              XendTokenContract.address,
+                              RewardBridge.address,
                               SavingsConfigContract.address);
+
+
 
      console.log("Groups Contract address: "+GroupsContract.address);
 
@@ -65,8 +70,6 @@ module.exports = function (deployer) {
 
      console.log("Venus Adapter Contract address: "+VenusAdapterContract.address );
 
-     console.log("XendToken Contract address: "+XendTokenContract.address );
-
      console.log("EsusuService Contract address: "+EsusuServiceContract.address );
 
      console.log("EsusuStorage Contract address: "+EsusuStorageContract.address );
@@ -77,16 +80,21 @@ module.exports = function (deployer) {
 
      console.log("EsusuAdapter Contract address: "+EsusuAdapterContract.address );
 
+     console.log("XendToken Contract address: "+XendTokenContract.address );
+
+     console.log("RewardBridge Contract address: "+RewardBridge.address );
+
      let venusAdapterContract = null;
      let venusLendingServiceContract = null;
      let savingsConfigContract = null;
      let esusuAdapterContract = null;
      let esusuServiceContract = null;
      let groupsContract = null;
-     let xendTokenContract = null;
+     let rewardBridgeContract = null;
      let esusuAdapterWithdrawalDelegateContract = null;
      let esusuStorageContract = null;
      let rewardConfigContract = null;
+     let xendTokenContract = null;
 
      savingsConfigContract = await SavingsConfigContract.deployed();
      venusAdapterContract = await VenusAdapterContract.deployed();
@@ -94,10 +102,12 @@ module.exports = function (deployer) {
      esusuAdapterContract = await EsusuAdapterContract.deployed();
      esusuServiceContract = await EsusuServiceContract.deployed();
      groupsContract = await GroupsContract.deployed();
-     xendTokenContract = await XendTokenContract.deployed();
+     rewardBridgeContract = await RewardBridge.deployed();
      esusuAdapterWithdrawalDelegateContract = await EsusuAdapterWithdrawalDelegateContract.deployed();
      esusuStorageContract = await EsusuStorageContract.deployed();
      rewardConfigContract = await RewardConfigContract.deployed();
+     xendTokenContract = await XendTokenContract.deployed();
+
  
   })
 

@@ -34,12 +34,15 @@
     const GroupsContract = artifacts.require('Groups');
     const TreasuryContract = artifacts.require('Treasury');
     const SavingsConfigContract = artifacts.require('SavingsConfig');
-    const XendTokenContract = artifacts.require('XendToken');
-    const EsusuServiceContract = artifacts.require('EsusuService');
     const RewardConfigContract = artifacts.require('RewardConfig');
+    const EsusuServiceContract = artifacts.require('EsusuService');
+    const RewardBridge = artifacts.require('RewardBridge');
     const EsusuAdapterContract = artifacts.require('EsusuAdapter');
     const EsusuAdapterWithdrawalDelegateContract = artifacts.require('EsusuAdapterWithdrawalDelegate');
     const EsusuStorageContract = artifacts.require('EsusuStorage');
+    const XendTokenContract = artifacts.require('XendToken');
+
+
     /** External contracts definition for DAI and YDAI
      *  1. I have unlocked an address from Ganache-cli that contains a lot of dai
      *  2. We will use the DAI contract to enable transfer and also balance checking of the generated accounts
@@ -106,9 +109,10 @@
         let esusuAdapterContract = null;
         let esusuServiceContract = null;
         let groupsContract = null;
-        let xendTokenContract = null;
+        let rewardBridgeContract = null;
         let esusuAdapterWithdrawalDelegateContract = null;
         let esusuStorageContract = null;
+        let xendTokenContract = null;
 
         before(async () =>{
 
@@ -118,9 +122,10 @@
             esusuAdapterContract = await EsusuAdapterContract.deployed();
             esusuServiceContract = await EsusuServiceContract.deployed();
             groupsContract = await GroupsContract.deployed();
-            xendTokenContract = await XendTokenContract.deployed();
+            rewardBridgeContract = await RewardBridge.deployed();
             esusuAdapterWithdrawalDelegateContract = await EsusuAdapterWithdrawalDelegateContract.deployed();
             esusuStorageContract = await EsusuStorageContract.deployed();
+            xendTokenContract = await XendTokenContract.deployed();
 
             //1. Create SavingsConfig rules
             await savingsConfigContract.createRule("esusufee",0,0,250,1);
@@ -144,7 +149,7 @@
             console.log("5->EsusuAdapter Address Updated In Groups contract ...");
 
             //6. Xend Token Should Grant access to the  Esusu Adapter Contract
-            await xendTokenContract.grantAccess(esusuAdapterContract.address);
+            await rewardBridgeContract.grantAccess(esusuAdapterContract.address);
             console.log("6->Xend Token Has Given access To Esusu Adapter to transfer tokens ...");
 
             //7. Esusu Adapter should Update Esusu Adapter Withdrawal Delegate
@@ -164,12 +169,15 @@
             console.log("10->Esusu Storage Contract Has Updated  Esusu Adapter and Esusu Adapter Withdrawal Delegate Address ...");
 
             //11. Xend Token Should Grant access to the  Esusu Adapter Withdrawal Delegate Contract
-            await xendTokenContract.grantAccess(esusuAdapterWithdrawalDelegateContract.address);
+            await rewardBridgeContract.grantAccess(esusuAdapterWithdrawalDelegateContract.address);
             console.log("11->Xend Token Has Given access To Esusu Adapter Withdrawal Delegate to transfer tokens ...");
 
            //12. Set Group Creator Reward Percentage
            await esusuAdapterWithdrawalDelegateContract.setGroupCreatorRewardPercent(10);
-           console.log("11-> Group Creator reward set on ESUSU Withdrawal Delegate ...");
+           console.log("12-> Group Creator reward set on ESUSU Withdrawal Delegate ...");
+
+           await rewardBridgeContract.updateTokenAddress(xendTokenContract.address);
+           console.log("13-> updateTokenAddress ...");
 
 
             //  Get the addresses and Balances of at least 2 accounts to be used in the test

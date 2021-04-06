@@ -7,7 +7,7 @@ import "./ITreasury.sol";
 import "./ISavingsConfig.sol";
 import "./ISavingsConfigSchema.sol";
 import "./IRewardConfig.sol";
-import "./IXendToken.sol";
+import "./IRewardBridge.sol";
 import "./SafeMath.sol";
 import "./IEsusuStorage.sol";
 import "./IEsusuAdapter.sol";
@@ -62,7 +62,7 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         ITreasury immutable _treasuryContract;
         ISavingsConfig immutable _savingsConfigContract;
         IRewardConfig immutable _rewardConfigContract;
-        IXendToken  immutable _xendTokenContract;
+        IRewardBridge  immutable _rewardBridge;
         string _feeRuleKey;
         uint256 _groupCreatorRewardPercent;
 
@@ -76,14 +76,14 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         uint256 _totalTokenReward;      //  This tracks the total number of token rewards distributed on the esusu 
 
         constructor(address payable serviceContract, address esusuStorageContract, address esusuAdapterContract,
-                    string memory feeRuleKey, address treasuryContract, address rewardConfigContract, address xendTokenContract, address savingsConfigContract)public OwnableService(serviceContract){
+                    string memory feeRuleKey, address treasuryContract, address rewardConfigContract, address rewardBridge, address savingsConfigContract)public OwnableService(serviceContract){
 
             _esusuStorage = IEsusuStorage(esusuStorageContract);
             _esusuAdapterContract = IEsusuAdapter(esusuAdapterContract);
             _feeRuleKey = feeRuleKey;
             _treasuryContract = ITreasury(treasuryContract);
             _rewardConfigContract = IRewardConfig(rewardConfigContract);
-            _xendTokenContract = IXendToken(xendTokenContract);
+            _rewardBridge = IRewardBridge(rewardBridge);
             _savingsConfigContract = ISavingsConfig(savingsConfigContract);
 
         }
@@ -472,8 +472,8 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
 
         uint256 reward = _rewardConfigContract.CalculateEsusuReward(totalCycleTime, amount);
 
-        // get Xend Token contract and mint token for member
-        _xendTokenContract.mint(payable(member), reward);
+        // send BEP20 Xend token reward to the user
+        _rewardBridge.rewardUser(reward,member);
 
         //  update the xend token reward for the member
         _esusuStorage.UpdateMemberToXendTokeRewardMapping(member,reward);
