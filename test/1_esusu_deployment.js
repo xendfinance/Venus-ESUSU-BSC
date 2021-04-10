@@ -53,7 +53,7 @@
 
     const BUSDContractAddress = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
     const vBUSDContractAddress = "0x95c78222B3D6e262426483D42CfA53685A67Ab9D";
-    const unlockedAddress = "0x631fc1ea2270e98fbd9d92658ece0f5a269aa161";   //  Has lots of BUSD
+    const unlockedAddress = "0xEfB826Ab5D566DB9d5Af50e17B0cEc5A60c18AA3";   //  Has lots of BUSD
     
     const BUSDContract = new web3.eth.Contract(BUSDContractABI,BUSDContractAddress);
     const vBUSDContract = new web3.eth.Contract(vBUSDContractABI,vBUSDContractAddress);
@@ -82,6 +82,7 @@
 
 
     }
+
 
     //  Approve a smart contract address or normal address to spend on behalf of the owner
     async function approveBUSD(spender,  owner,  amount){
@@ -148,9 +149,9 @@
             await  groupsContract.activateStorageOracle(esusuAdapterContract.address);
             console.log("5->EsusuAdapter Address Updated In Groups contract ...");
 
-            //6. Xend Token Should Grant access to the  Esusu Adapter Contract
+            //6. Reward Bridge Should Grant access to the  Esusu Adapter Contract
             await rewardBridgeContract.grantAccess(esusuAdapterContract.address);
-            console.log("6->Xend Token Has Given access To Esusu Adapter to transfer tokens ...");
+            console.log("6->Reward Bridge Has Given access To Esusu Adapter to transfer tokens ...");
 
             //7. Esusu Adapter should Update Esusu Adapter Withdrawal Delegate
             await esusuAdapterContract.UpdateEsusuAdapterWithdrawalDelegate(esusuAdapterWithdrawalDelegateContract.address);
@@ -168,9 +169,9 @@
             await esusuStorageContract.UpdateAdapterAndAdapterDelegateAddresses(esusuAdapterContract.address,esusuAdapterWithdrawalDelegateContract.address);
             console.log("10->Esusu Storage Contract Has Updated  Esusu Adapter and Esusu Adapter Withdrawal Delegate Address ...");
 
-            //11. Xend Token Should Grant access to the  Esusu Adapter Withdrawal Delegate Contract
+            //11. Reward Bridge Should Grant access to the  Esusu Adapter Withdrawal Delegate Contract
             await rewardBridgeContract.grantAccess(esusuAdapterWithdrawalDelegateContract.address);
-            console.log("11->Xend Token Has Given access To Esusu Adapter Withdrawal Delegate to transfer tokens ...");
+            console.log("11->Reward Bridge Has Given access To Esusu Adapter Withdrawal Delegate to transfer tokens ...");
 
            //12. Set Group Creator Reward Percentage
            await esusuAdapterWithdrawalDelegateContract.setGroupCreatorRewardPercent(10);
