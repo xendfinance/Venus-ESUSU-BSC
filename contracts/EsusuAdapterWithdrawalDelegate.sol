@@ -174,8 +174,10 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
                    
             //  Now the Dai is in this contract, transfer it to the treasury contract 
             uint256 balance = _BUSD.balanceOf(address(this));
-            _BUSD.approve(address(_treasuryContract),balance);
-            _treasuryContract.depositToken(address(_BUSD));
+            if(balance>0){
+                _BUSD.approve(address(_treasuryContract),balance);
+                _treasuryContract.depositToken(address(_BUSD));
+            }
 
         }else{
 
@@ -352,8 +354,10 @@ contract EsusuAdapterWithdrawalDelegate is OwnableService, ISavingsConfigSchema 
         uint256 finalFee = fee.sub(creatorReward);
         //  Send deducted fee to treasury
         //  Approve the treasury contract
+        if(finalFee>0){
         _BUSD.approve(address(_treasuryContract),finalFee);
         _treasuryContract.depositToken(address(_BUSD));
+        }
 
         address cycleOwner = _esusuStorage.GetCycleOwner(esusuCycleId);
         
